@@ -1,7 +1,9 @@
 name: build-apk
 
-# 推送到 main/master 或手动触发时构建 APK。
+# 推送到 main/master、打 v* 标签、或手动触发时构建 APK。
 # 不需要本地装 Android SDK —— 直接把产物下载下来安装即可。
+#
+# 打标签（v1.20.7 这种）时，除了构建还会**自动创建 Release 并把 APK 附上去**。
 #
 # 注意：构建的是 **release** 而不是 debug。
 # Xposed 模块必须单 dex，而 AGP 在 debug 变体下会把工程类按包拆成多个 dex，
@@ -10,7 +12,12 @@ name: build-apk
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   workflow_dispatch:
+
+# 创建 Release 需要 contents: write（有些仓库默认是只读）
+permissions:
+  contents: write
 
 jobs:
   apk:
@@ -102,3 +109,35 @@ jobs:
           name: byd-lsp-apk
           path: byd-lsp/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
+
+      - name: 核对标签与版本号一致
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -e
+          WANT="v$(grep -oP "versionName\s+'\K[^']+" byd-lsp/app/build.gradle)"
+          echo "标签 $GITHUB_REF_NAME / 构建版本 $WANT"
+          if [ "$GITHUB_REF_NAME" != "$WANT" ]; then
+            echo "::error::标签 $GITHUB_REF_NAME 与 build.gradle 的 versionName $WANT 不一致，先改版本号再打标签"
+            exit 1
+          fi
+
+      # 用 runner 自带的 gh 建 Release（不引第三方 action），已有同名 Release 就覆盖上传
+      - name: 打标签时创建 Release 并附上 APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          APK="$(find byd-lsp/app/build/outputs/apk -name '*.apk' | head -n1)"
+          cp "$APK" "byd-lsp-${GITHUB_REF_NAME}-release.apk"
+          ls -l "byd-lsp-${GITHUB_REF_NAME}-release.apk"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release 已存在，覆盖上传附件"
+            gh release upload "$GITHUB_REF_NAME" "byd-lsp-${GITHUB_REF_NAME}-release.apk" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              "byd-lsp-${GITHUB_REF_NAME}-release.apk#已签名 release APK（单 dex，可直接安装）" \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes
+          fi
+          gh release view "$GITHUB_REF_NAME" --json url,assets --jq '.url, (.assets[] | "  附件: \(.name)  \(.size) B")'

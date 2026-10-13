@@ -21,7 +21,9 @@
 1. 装 APK  → 2. LSPosed 勾选模块、作用域选微信 → 3. 强行停止微信再打开 → 4. 打开 App 点「立即签到」
 ```
 
-APK 就在仓库根目录：`byd-lsp-1.20.6-release.apk`（也可以从 Actions 的 `byd-lsp-apk` 产物拿最新的）。
+APK 就在仓库根目录：`byd-lsp-1.20.6-release.apk`；
+也可以从 [Releases](https://github.com/linbailo/byd-lsp/releases) 下载（打 `v*` 标签时自动发布并附带已签名的 APK），
+或从 Actions 的 `byd-lsp-apk` 产物里拿最新的。
 
 - **要求**：Android 8.0+（minSdk 26）、已装 LSPosed（或 EdXposed 等兼容框架）、微信里能看到比亚迪小程序。
 - **工具链**：要自己构建的话，JDK 17 + Android SDK（platform 34 / build-tools 34）即可，
@@ -176,9 +178,28 @@ BYD_TOOLCHAIN=/opt/byd-toolchain ./build-apk.sh
 
 ### 不想配本地环境：交给 GitHub Actions
 
-把仓库推上去之后，`.github/workflows/build-apk.yml` 会在 push 到 `main`/`master`
-或手动触发时构建；到 Actions 页面下载 `byd-lsp-apk` 产物即可。
+把仓库推上去之后，`.github/workflows/build-apk.yml` 会在 push 到 `main`/`master`、
+**打 `v*` 标签**、或手动触发时构建；到 Actions 页面下载 `byd-lsp-apk` 产物即可。
 它同样会校验「单 dex + 资源齐全 + 签名」，不达标直接失败。
+
+### 发布新版本（打标签 = 自动出 Release）
+
+改完 `byd-lsp/app/build.gradle` 里的 `versionCode` / `versionName`，推一个同名标签：
+
+```bash
+git tag v1.20.7          # 改成你要发布的版本号
+git push origin v1.20.7
+```
+
+Actions 会构建并校验，然后**自动创建 Release、把已签名的 APK 作为附件附上**
+（Release 说明由 `--generate-notes` 从这之间的提交记录生成）。
+有两条前置检查，不满足就直接失败，避免发出对不上的包：
+
+- **标签必须与 `versionName` 一致**：`v1.20.7` ↔ `versionName '1.20.7'`；
+- 构建产物仍然要过「单 dex + 资源齐全 + 签名」那套校验。
+
+已经存在的同名 Release 不会报错，会改为**覆盖上传**附件。
+不装 git 也可以让别人用 API 打标签，规则同上。
 
 ### 为什么必须 release（而不是 debug）
 
