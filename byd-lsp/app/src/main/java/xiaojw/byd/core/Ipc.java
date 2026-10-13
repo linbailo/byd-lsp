@@ -12,7 +12,9 @@ import android.content.Intent;
  */
 public final class Ipc {
 
-    public static final String PKG_MODULE = "xiaojw.byd";
+    // 必须是 applicationId（广播按包名投递；模块取自身版本号也用它），
+    // 1.22.0 起随 LSPosed 官方模块库的命名要求改成了 io.github.* 前缀
+    public static final String PKG_MODULE = "io.github.linbailo.byd";
     public static final String PKG_WECHAT = "com.tencent.mm";
 
     /** App → 模块进程：下发完整配置 */

@@ -76,7 +76,7 @@ public final class AppStore {
      *
      * 说明：模块跑在微信进程里，读不到我们这个目录，所以它走的还是广播通道；
      * 这个文件是**同一份配置的可读副本**，不是模块的读取源。
-     * 路径：/sdcard/Android/data/xiaojw.byd/files/config.json
+     * 路径：/sdcard/Android/data/io.github.linbailo.byd/files/config.json
      */
     public static File configFile(Context c) {
         File dir = c.getApplicationContext().getExternalFilesDir(null);

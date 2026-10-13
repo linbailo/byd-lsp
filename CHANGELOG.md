@@ -6,6 +6,48 @@
 > 1.20.x 这几版的改动大多是围绕同一个目标：**让「微信升级后自动适配」这条路真的能自己走通**。
 > 过程记录得比较细，因为每一步都是实机日志逼出来的。
 
+### 1.22.0
+
+**包名从 `xiaojw.byd` 换成 `io.github.linbailo.byd` —— 为了能进 LSPosed 官方模块库。**
+
+起因是问「怎么发布到 LSPosed 模块库」。查下来，LSPosed Manager 里那个「在线模块」列表
+由官方组织 [Xposed-Modules-Repo](https://github.com/Xposed-Modules-Repo) 生成，
+**收录的第一个门槛就是 applicationId**，官方要求二选一：
+
+- 自有域名的反写，并在根域加一条 TXT 记录证明归属；
+- 或 `io.github.{GitHub 用户名}` 前缀（免域名、免验证）。
+
+`xiaojw.byd` 虽然是反域名写法，但那个域名不属于本仓库维护者，第一条路走不通，
+所以选了第二条。这也是为什么新包名里出现的是 `linbailo`。
+
+改了三处：
+
+- `byd-lsp/app/build.gradle`：`applicationId` → `io.github.linbailo.byd`。
+  **`namespace` 和 Java 包名不动**，仍是 `xiaojw.byd.*` —— 这两者本来就是两回事，
+  Java 包名只是类的归属，没有任何外部含义，改它要动几百个文件却毫无收益；
+- `Ipc.PKG_MODULE` → 新包名。这是**唯一的功能性硬编码**：广播靠它投递，
+  模块读自己的版本号也用它；
+- 控制台「外部配置副本」路径的说明文字 → `/sdcard/Android/data/io.github.linbailo.byd/files/config.json`。
+
+广播的 action 字符串（`xiaojw.byd.action.*`）**故意没改**：它们是两端共用的常量，
+和包名没有任何关系，改了只会让旧日志、旧文档对不上。
+
+升级代价（README 的「四、安装与启用」也写了同样的内容）：
+
+- 包名变了就是**另一个应用**，这一版**必须先卸载旧版再装**，签名一致也不能覆盖；
+- 装完要到 LSPosed 里**重新勾选**新包名的作用域，否则表现就是「勾了没注入」；
+- 控制台配置要重配一次，旧的 `/sdcard/Android/data/xiaojw.byd/files/config.json`
+  可以复制到新目录；
+- **签到状态不会丢** —— 模块记的是**微信自己的** SharedPreferences，与包名无关。
+
+#### 顺带
+
+- 版本 1.22.0 / `versionCode 28`（从 27 跳一号：中间的 1.21.0 是那个已被回退的
+  HTTP 取码实现，从未发布，实现存档在 `reverted/`）。
+- 签名未变（`73342536…5ba9716`）。不过如上面所说，包名不同就不能覆盖安装。
+- README 新增「发布到 LSPosed 官方模块库」小节，把收录要求、提交入口、
+  以及那个仓库的 Release 规范（标签必须是 `[versionCode]-[versionName]`）都记了进去。
+
 ### 1.20.6
 
 **1.20.5 那条「回推」还不够靠谱，改成控制台主动拉。**

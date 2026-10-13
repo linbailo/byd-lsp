@@ -21,7 +21,7 @@
 1. 装 APK  → 2. LSPosed 勾选模块、作用域选微信 → 3. 强行停止微信再打开 → 4. 打开 App 点「立即签到」
 ```
 
-APK 就在仓库根目录：`byd-lsp-1.20.6-release.apk`；
+APK 就在仓库根目录：`byd-lsp-1.22.0-release.apk`；
 也可以从 [Releases](https://github.com/linbailo/byd-lsp/releases) 下载（打 `v*` 标签时自动发布并附带已签名的 APK），
 或从 Actions 的 `byd-lsp-apk` 产物里拿最新的。
 
@@ -146,7 +146,7 @@ flowchart TB
 仓库根目录已经放了构建好的正式版：
 
 ```
-byd-lsp-1.20.6-release.apk    120 KB   （已签名、无 debuggable、单 dex）
+byd-lsp-1.22.0-release.apk    120 KB   （已签名、无 debuggable、单 dex）
 ```
 
 ### 需要什么
@@ -201,6 +201,39 @@ Actions 会构建并校验，然后**自动创建 Release、把已签名的 APK 
 已经存在的同名 Release 不会报错，会改为**覆盖上传**附件。
 不装 git 也可以让别人用 API 打标签，规则同上。
 
+### 发布到 LSPosed 官方模块库（「在线模块」列表）
+
+LSPosed Manager 里的「在线模块」列表来自官方组织
+[Xposed-Modules-Repo](https://github.com/Xposed-Modules-Repo)：
+每个模块在其中有一个以**包名**命名的仓库，列表由它的构建任务生成。
+
+**第一个门槛是包名**，官方要求二选一：
+
+- `io.github.{你的 GitHub 用户名}.*` —— 免域名、免验证，最省事；
+- 或者你自己**拥有**的域名的反写，并在根域加一条 TXT 记录
+  `lsposed-modules-repo-verification={你的 GitHub 用户名}`。
+
+> 本项目 1.22.0 起用 `io.github.linbailo.byd` 正是为了满足这一条
+> （之前是 `xiaojw.byd`，虽然是反域名写法但不属于自己拥有的域名）。
+> Java 包名仍保留 `xiaojw.byd.*` —— `applicationId` 和 Java 包名是两回事。
+
+**流程**（提交入口是网页表单，会带你到 GitHub 开 issue）：
+
+1. 打开 [modules.lsposed.org/submission](https://modules.lsposed.org/submission)，
+   选 `Submit a new package`，填 **Package name**（= APK 的 applicationId）和说明，
+   点 `Submit on GitHub` —— 它会用模板在 `Xposed-Modules-Repo/submission` 开一个
+   标题形如 `[submission] io.github.linbailo.byd` 的 issue；
+2. 机器人会创建 `Xposed-Modules-Repo/io.github.linbailo.byd` 并把提交者加为 maintainer；
+3. 在那个仓库里补 **`SUMMARY`**（首页一句话摘要）和 **`README.md`**（完整说明，
+   **不要把源码放进去**），然后发 Release：
+   标题 = `versionName`，内容 = 更新日志，
+   **标签格式是 `[versionCode]-[versionName]`**（例如 `28-1.22.0`），
+   **必须附上已签名的 APK** —— 只有带 APK 的 Release 才会被收录/更新；
+4. 等 5~60 分钟，列表重建完成后，LSPosed Manager 里就能搜到，并会提示更新。
+
+> 注意：**我们仓库自己的 Release 用的是 `v1.22.0`**（人看的）；
+> 官方列表那个仓库里的标签要按 `28-1.22.0` 写。两边互不影响。
+
 ### 为什么必须 release（而不是 debug）
 
 Xposed 模块**必须单 dex**。AGP 在 debug 变体下会把工程类按包拆成多个 dex
@@ -226,8 +259,15 @@ release 变体会合并成单个 `classes.dex`，脚本与 CI 对这一点都有
 ## 四、安装与启用
 
 0. **装过旧版先卸载。** 旧 debug 包的签名（`CN=Android Debug`）与正式版不同，
-   不卸载会报 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`。1.1.0 之后的正式版签名一致，可直接覆盖。
-1. 安装 `byd-lsp-1.20.6-release.apk`。
+   不卸载会报 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`。1.1.0 之后的正式版签名一致，可直接覆盖 ——
+   **但 1.22.0 换了包名**（`xiaojw.byd` → `io.github.linbailo.byd`，为了满足 LSPosed 官方模块库的
+   命名要求）。包名变了就是另一个应用，所以这一版**必须先卸载旧版再装**，
+   装好后到 LSPosed 里重新勾选新包名的作用域。
+   模块的签到状态存在**微信自己的** SharedPreferences 里，**不会丢**；
+   控制台 App 的配置要重配一次（旧的
+   `/sdcard/Android/data/xiaojw.byd/files/config.json` 可以复制到新目录
+   `/sdcard/Android/data/io.github.linbailo.byd/files/config.json`）。
+1. 安装 `byd-lsp-1.22.0-release.apk`。
 2. LSPosed 管理器 → 模块 → 勾选 **BYD 自动签到**。
 3. 作用域勾选 **微信**（`com.tencent.mm`）。系统分身/多开包名相同，勾一项即可覆盖所有实例。
 4. 强行停止微信后重新打开。LSPosed 日志里应出现：
@@ -482,7 +522,7 @@ j1 调用链                err  本机实际是 .e().g(c)，但配置里写的�
 
 | 位置 | 内容 | 用途 |
 |---|---|---|
-| `/sdcard/Android/data/xiaojw.byd/files/config.json` | **完整配置**：所有设置项 + 完整微信版本表 | 用文件管理器查看 / 备份 / 手改；App 里点「从文件重新加载」读回 |
+| `/sdcard/Android/data/io.github.linbailo.byd/files/config.json` | **完整配置**：所有设置项 + 完整微信版本表 | 用文件管理器查看 / 备份 / 手改；App 里点「从文件重新加载」读回 |
 | 控制台「配置」页的编辑框 | 同一份内容 | 直接编辑、保存 |
 | 微信私有目录下的缓存 | 模块自己缓存的一份 | 微信重启后不必等 App 拉起 |
 
@@ -602,16 +642,16 @@ APK 是实际编译出来的，并且逐项检查过：
 
 | 检查 | 结果 |
 |---|---|
-| `aapt2 dump badging` | `xiaojw.byd` / `versionName 1.20.6` / `versionCode 27` / minSdk 26 / targetSdk 34 / label「BYD 自动签到」 |
+| `aapt2 dump badging` | `io.github.linbailo.byd` / `versionName 1.22.0` / `versionCode 28` / minSdk 26 / targetSdk 34 / label「BYD 自动签到」 |
 | Xposed 元数据 | `xposedmodule=true`、`xposedminversion=82`、`xposedscope=com.tencent.mm` |
 | 组件 | `MainActivity`（LAUNCHER）+ `StateReceiver`（12 个 action，含 `PONG` / `SELFTEST` / `TRYCODE` / `CLAIMRESULT` / `CODE`）+ `AppSignReceiver`（`BOOT_COMPLETED` / `MY_PACKAGE_REPLACED`，`exported=false`） |
 | 权限 | `INTERNET`、`ACCESS_NETWORK_STATE`、`RECEIVE_BOOT_COMPLETED`、`SCHEDULE_EXACT_ALARM` |
 | 自适应图标 | `res/mipmap-anydpi-v26/ic_launcher.xml` 已编入 |
 | WebUI 资源 | 包内 `assets/webui/index.html` 与源文件**逐字节一致**（97392 B，0 个不同字节） |
 | 版本表资源 | 包内 `assets/wxcode_versions.json` **10 个版本**（8.0.49 ~ 8.0.78，含 Play 版 8.0.68），每个版本带 `_src` 来源标注 |
-| APK 体积 | 120 KB（122414 B） |
+| APK 体积 | 120 KB（122438 B） |
 | 入口声明 | 包内 `assets/xposed_init` **23 B、末尾无换行**，内容 `xiaojw.byd.hook.BydHook` |
-| dex 内容 | **单个** `classes.dex`（166168 B），全部类均为 `xiaojw/byd/*`，含入口类；Xposed 存根未内联 |
+| dex 内容 | **单个** `classes.dex`（166180 B），全部类均为 `xiaojw/byd/*`，含入口类；Xposed 存根未内联 |
 | debuggable | 无（正式版） |
 | 签名 | `apksigner verify`：v2 通过，`CN=BYD Auto Sign`，指纹 `73342536…5ba9716` |
 
@@ -624,7 +664,7 @@ APK 是实际编译出来的，并且逐项检查过：
 
 逐版改动与原因见 **[CHANGELOG.md](CHANGELOG.md)**（新版本在最前面）。
 
-当前版本：**1.20.6**（`versionCode 27`），正式包名 `byd-lsp-1.20.6-release.apk`。
+当前版本：**1.22.0**（`versionCode 28`），正式包名 `byd-lsp-1.22.0-release.apk`。
 
 ## 十、LSPosed 勾选后不生效的排查
 

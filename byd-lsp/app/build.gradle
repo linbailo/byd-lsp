@@ -23,15 +23,21 @@ if (keystorePropsFile.exists()) {
 }
 
 android {
+    // Java 包名保留历史值（xiaojw.byd.*），它和 applicationId 是两回事：
+    // 只有 applicationId 需要满足 LSPosed 官方模块库的命名要求。
     namespace 'xiaojw.byd'
     compileSdk 34
 
     defaultConfig {
-        applicationId 'xiaojw.byd'
+        // LSPosed 官方模块库要求 applicationId 是自有域名的反写，
+        // 或 io.github.{GitHub 用户名} 前缀（免域名、免 TXT 记录）。
+        // 注意：改它等于换应用身份，旧版必须先卸载；模块的签到状态存在微信自己的
+        // SharedPreferences 里，不受影响。
+        applicationId 'io.github.linbailo.byd'
         minSdk 26
         targetSdk 34
-        versionCode 27
-        versionName '1.20.6'
+        versionCode 28
+        versionName '1.22.0'
     }
 
     signingConfigs {
