@@ -234,6 +234,10 @@ LSPosed Manager 里的「在线模块」列表来自官方组织
 > 注意：**我们仓库自己的 Release 用的是 `v1.22.0`**（人看的）；
 > 官方列表那个仓库里的标签要按 `28-1.22.0` 写。两边互不影响。
 
+现成可复制的内容放在 [`docs/lsposed/`](docs/lsposed/)：
+[`SUMMARY`](docs/lsposed/SUMMARY) 直接作为那个仓库根目录的 `SUMMARY` 文件，
+[`RELEASE-NOTES.md`](docs/lsposed/RELEASE-NOTES.md) 是 Release 说明的正文和以后的模板。
+
 ### 为什么必须 release（而不是 debug）
 
 Xposed 模块**必须单 dex**。AGP 在 debug 变体下会把工程类按包拆成多个 dex
