@@ -1,0 +1,97 @@
+{
+    "_note":  "微信小程序登录 Hook 版本适配表。全部取自 xiaojinwen/wxcode-hook-config 中已存在的版本配置，可被 APP「配置」页覆盖。",
+    "_source":  "https://github.com/xiaojinwen/wxcode-hook-config",
+    "_fields":  {
+                    "j1":  "任务提交器（源码中形如 pkg.cls.d().g(...) 的链式调用）",
+                    "c":  "参数构造类（8 参构造：String, LinkedList, int, String, String, int, int, a7）",
+                    "a1":  "单参回调：new XX(this)，实现 o2 接口",
+                    "a7":  "双参回调：new XX(this, callback)",
+                    "loginTask":  "LoginTask 字段名映射（仅需写与默认不同的项）。写入项：action=o, appId=p, s=s, v=v, t=t, u=u, A=A；读取项：state=r（非 null 表示登录结束）, code=q（真正的 code）。微信升级后字段名漂移时，在对应版本的 loginTask 里写成 {角色: 实际字段名} 即可，例如 {\"state\":\"r2\",\"code\":\"q2\"}",
+                    "_src":  "该版本配置来源于参考仓库的哪个文件/常量",
+                    "_note":  "a1/a7 可用短名（plugin.xxx）或全限定名（com.tencent.mm.plugin.xxx），两种都支持"
+                },
+    "common":  {
+                   "j1_static_method":  "d",
+                   "j1_instance_method":  "g"
+               },
+    "versions":  {
+                     "8.0.49":  {
+                                    "j1":  "u70.k1",
+                                    "c":  "o60.c",
+                                    "a1":  "plugin.appbrand.jsapi.auth.b2",
+                                    "a7":  "plugin.appbrand.jsapi.auth.f2",
+                                    "j1_instance_method":  "f",
+                                    "_src":  "known_configs.json + KNOWN_EDITION_CONFIGS.domestic"
+                                },
+                     "8.0.62":  {
+                                    "j1":  "of0.j1",
+                                    "c":  "he0.c",
+                                    "a1":  "plugin.appbrand.jsapi.auth.h2",
+                                    "a7":  "plugin.appbrand.jsapi.auth.l2",
+                                    "_src":  "known_configs.json"
+                                },
+                     "8.0.68":  {
+                                    "j1":  "jj0.k1",
+                                    "c":  "ei0.c",
+                                    "a1":  "plugin.type.jsapi.auth.l2",
+                                    "a7":  "plugin.type.jsapi.auth.m2",
+                                    "j1_instance_method":  "g",
+                                    "_src":  "KNOWN_EDITION_CONFIGS.play（Play 版）",
+                                    "_note":  "Play 版登录链，回调在 plugin.type.jsapi.auth 包（与国内版不可混用）"
+                                },
+                     "8.0.70":  {
+                                    "j1":  "yj0.j1",
+                                    "c":  "ti0.c",
+                                    "a1":  "plugin.appbrand.jsapi.auth.h2",
+                                    "a7":  "plugin.appbrand.jsapi.auth.l2",
+                                    "_src":  "known_configs.json"
+                                },
+                     "8.0.71":  {
+                                    "j1":  "tk0.j1",
+                                    "c":  "oj0.c",
+                                    "a1":  "plugin.appbrand.jsapi.auth.h2",
+                                    "a7":  "plugin.appbrand.jsapi.auth.l2",
+                                    "_src":  "known_configs.json"
+                                },
+                     "8.0.72":  {
+                                    "j1":  "dl0.k1",
+                                    "c":  "yj0.c",
+                                    "a1":  "plugin.appbrand.jsapi.auth.h2",
+                                    "a7":  "plugin.appbrand.jsapi.auth.l2",
+                                    "_src":  "known_configs.json"
+                                },
+                     "8.0.74":  {
+                                    "j1":  "gm0.j1",
+                                    "c":  "bl0.c",
+                                    "a1":  "plugin.appbrand.jsapi.auth.h2",
+                                    "a7":  "plugin.appbrand.jsapi.auth.l2",
+                                    "_src":  "known_configs.json"
+                                },
+                     "8.0.76":  {
+                                    "j1":  "hm0.j1",
+                                    "c":  "cl0.c",
+                                    "a1":  "plugin.appbrand.jsapi.auth.i2",
+                                    "a7":  "plugin.appbrand.jsapi.auth.m2",
+                                    "_src":  "hook_config_8.0.76.json",
+                                    "_note":  "8.0.76 混淆位移: h2-\u003ei2(a1), l2-\u003em2(a7)"
+                                },
+                     "8.0.77":  {
+                                    "j1":  "ho0.j1",
+                                    "c":  "cn0.c",
+                                    "a1":  "plugin.appbrand.jsapi.auth.i2",
+                                    "a7":  "plugin.appbrand.jsapi.auth.m2",
+                                    "j1_static_method":  "e",
+                                    "_src":  "hook_config_domestic_8.0.77.json",
+                                    "_note":  "国内版；自 8.0.77 起 j1 静态方法由 d 变为 e"
+                                },
+                     "8.0.78":  {
+                                    "j1":  "gp0.j1",
+                                    "c":  "bo0.c",
+                                    "a1":  "plugin.appbrand.jsapi.auth.i2",
+                                    "a7":  "plugin.appbrand.jsapi.auth.m2",
+                                    "j1_static_method":  "e",
+                                    "_src":  "hook_config_domestic_8.0.78.json",
+                                    "_note":  "国内版；自 8.0.77 起 j1 静态方法由 d 变为 e"
+                                }
+                 }
+}

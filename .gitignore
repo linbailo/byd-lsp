@@ -1,0 +1,25 @@
+# 构建产物
+byd-lsp/app/build/
+byd-lsp/build/
+byd-lsp/.gradle/
+byd-lsp/local.properties
+
+# Xposed API 存根：构建脚本会自动下载（约 25 KB），不进仓库
+byd-lsp/app/libs/api-82.jar
+
+# IDE / 编辑器
+.idea/
+*.iml
+.trae/
+.gitee/
+.vscode/
+*.swp
+
+# 操作系统垃圾文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时
+*.log
+*.tmp

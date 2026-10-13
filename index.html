@@ -1,0 +1,2117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0A0E13">
+<meta name="color-scheme" content="dark">
+<title>BYD 自动签到 · 控制台</title>
+<style>
+/* ============================================================
+   BYD 自动签到 · 控制台
+   视觉锚点：比亚迪海洋网车机 HUD —— 深色底 + 海洋青信号色
+   ============================================================ */
+:root{
+  --bg:#0A0E13;
+  --bg-deep:#060A0E;
+  --surface:#121A22;
+  --surface-2:#18222C;
+  --line:#22303D;
+  --line-soft:#1B2731;
+  --ink:#E9F1F8;
+  --ink-dim:#A9BCCD;
+  --muted:#7A8D9E;
+  --accent:#00D9C0;
+  --accent-dim:#0A8C7E;
+  --accent-glow:rgba(0,217,192,.18);
+  --warn:#FFC24B;
+  --danger:#FF6B5A;
+  --info:#4FA8FF;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",sans-serif;
+  --r-lg:18px;
+  --r-md:14px;
+  --r-sm:10px;
+  --pad:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.5;
+  min-height:100vh;
+  overscroll-behavior-y:none;
+}
+/* 顶部氛围光 */
+body::before{
+  content:"";position:fixed;inset:0 0 auto 0;height:280px;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(120% 100% at 50% -30%,rgba(0,217,192,.16),transparent 62%),
+    radial-gradient(80% 60% at 90% -10%,rgba(79,168,255,.10),transparent 70%);
+}
+button{font-family:inherit;font-size:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink)}
+a{color:var(--accent)}
+
+.app{
+  position:relative;z-index:1;
+  max-width:480px;margin:0 auto;
+  padding:0 var(--pad) calc(78px + env(safe-area-inset-bottom));
+}
+/* ---------- 顶部 ---------- */
+.topbar{
+  display:flex;align-items:center;gap:10px;
+  padding:calc(14px + env(safe-area-inset-top)) 2px 12px;
+}
+.brand{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
+.brand b{font-size:16px;font-weight:600;letter-spacing:.2px}
+.brand span{font-size:11px;color:var(--muted);letter-spacing:.4px}
+.engine-pill{
+  display:flex;align-items:center;gap:6px;flex:0 0 auto;
+  padding:6px 11px;border-radius:999px;
+  background:var(--surface);border:1px solid var(--line);
+  font-size:11.5px;color:var(--ink-dim);white-space:nowrap;
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:0 0 auto}
+.dot.on{background:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.dot.warn{background:var(--warn)}
+.dot.err{background:var(--danger)}
+.dot.pulse{animation:dotpulse 1.6s ease-in-out infinite}
+@keyframes dotpulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ---------- 卡片 ---------- */
+.card{
+  background:var(--surface);
+  border:1px solid var(--line-soft);
+  border-radius:var(--r-lg);
+  padding:var(--pad);
+  margin-bottom:12px;
+}
+.card.tight{padding:13px var(--pad)}
+.sec-title{
+  display:flex;align-items:center;gap:8px;
+  margin:20px 2px 10px;font-size:12px;font-weight:600;
+  letter-spacing:1.4px;color:var(--muted);text-transform:uppercase;
+}
+.sec-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.row{display:flex;align-items:center;gap:12px}
+.row+.row{margin-top:11px}
+.row .k{color:var(--ink-dim);font-size:13.5px;flex:0 0 auto}
+.row .v{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--ink);text-align:right;word-break:break-all}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono)}
+.red{color:var(--danger)}
+.v.ok{color:var(--accent)}
+.v.err{color:var(--danger)}
+.v.warn{color:var(--warn)}
+.hint{font-size:11.5px;color:var(--muted);line-height:1.65}
+
+/* ---------- 状态环 ---------- */
+.hero{display:flex;align-items:center;gap:18px}
+.ring{
+  --pct:0;
+  position:relative;flex:0 0 auto;width:104px;height:104px;border-radius:50%;
+  background:
+    conic-gradient(var(--accent) calc(var(--pct)*1%),#1C2731 0);
+  display:grid;place-items:center;
+  transition:background .6s ease;
+}
+.ring::after{
+  content:"";position:absolute;inset:9px;border-radius:50%;
+  background:var(--surface);
+}
+.ring .inner{position:relative;z-index:1;text-align:center;line-height:1.1}
+.ring .big{font-family:var(--mono);font-size:27px;font-weight:600;letter-spacing:-.5px}
+.ring .sub{font-size:10.5px;color:var(--muted);margin-top:3px;letter-spacing:.5px}
+.ring.ok{box-shadow:0 0 0 5px var(--accent-glow)}
+.ring.run{animation:ringrun 1.4s ease-in-out infinite}
+@keyframes ringrun{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+.hero-txt{flex:1;min-width:0}
+.hero-txt h2{margin:0 0 3px;font-size:17px;font-weight:600}
+.hero-txt p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.6}
+.hero-txt .streak{font-family:var(--mono);color:var(--accent);font-weight:600}
+
+/* ---------- 按钮 ---------- */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:46px;padding:0 18px;border-radius:var(--r-md);
+  background:var(--surface-2);border:1px solid var(--line);
+  font-size:14.5px;font-weight:500;color:var(--ink);
+  transition:transform .12s ease,opacity .12s;
+}
+.btn:active{transform:scale(.975);opacity:.85}
+.btn.primary{
+  background:linear-gradient(180deg,#00E6CB,#00BFA9);
+  border-color:transparent;color:#04211D;font-weight:600;
+  box-shadow:0 6px 20px -8px rgba(0,217,192,.6);
+}
+.btn.primary:disabled{opacity:.5;box-shadow:none}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger);border-color:rgba(255,107,90,.3)}
+.btn.sm{min-height:36px;padding:0 13px;font-size:13px;border-radius:var(--r-sm)}
+.btn.full{width:100%}
+.btn-group{display:flex;gap:9px}
+.btn-group>.btn{flex:1}
+
+/* ---------- 定时点 ---------- */
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.slot{
+  text-align:center;padding:9px 2px 8px;border-radius:var(--r-sm);
+  background:var(--surface-2);border:1px solid var(--line);
+}
+.slot .t{font-family:var(--mono);font-size:13.5px;font-weight:600}
+.slot .s{font-size:10px;color:var(--muted);margin-top:2px}
+.slot.done{border-color:var(--accent-dim);background:rgba(0,217,192,.08)}
+.slot.done .t{color:var(--accent)}
+.slot.next{border-color:var(--info);box-shadow:0 0 0 3px rgba(79,168,255,.12)}
+.slot.next .s{color:var(--info)}
+
+/* ---------- 实例 ---------- */
+.inst{
+  display:flex;align-items:center;gap:12px;
+  padding:12px;border-radius:var(--r-md);
+  background:var(--surface-2);border:1px solid var(--line);
+}
+.inst+.inst{margin-top:9px}
+.inst .idx{
+  flex:0 0 auto;width:38px;height:38px;border-radius:11px;
+  display:grid;place-items:center;
+  background:rgba(0,217,192,.1);color:var(--accent);
+  font-family:var(--mono);font-size:12.5px;font-weight:600;
+}
+.inst .meta{flex:1;min-width:0}
+.inst .meta b{display:block;font-size:13.5px;font-weight:500}
+.inst .meta span{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px}
+.tag{
+  flex:0 0 auto;padding:3px 8px;border-radius:6px;font-size:10.5px;
+  border:1px solid var(--line);color:var(--muted);white-space:nowrap;
+}
+.tag.ok{color:var(--accent);border-color:var(--accent-dim);background:rgba(0,217,192,.08)}
+.tag.err{color:var(--danger);border-color:rgba(255,107,90,.35)}
+.tag.wait{color:var(--warn);border-color:rgba(255,194,75,.35)}
+
+/* ---------- 版本号格子（当前支持版本：一行 3 个） ---------- */
+.vergrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.verchip{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:7px 4px;border-radius:var(--r-sm);border:1px solid var(--line);
+  font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);
+  background:var(--bg-deep);text-align:center;
+}
+/* 本机探测生成的（覆盖层）：虚线边框区分，点一下能看到来源（title） */
+.verchip.probe{border-style:dashed;color:var(--ink)}
+.verchip.cur{border-color:var(--accent);color:var(--accent);font-weight:600;background:rgba(0,217,192,.08)}
+.verdot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex:0 0 auto}
+
+/* ---------- 日志 ---------- */
+.logbox{
+  font-family:var(--mono);font-size:11.5px;line-height:1.72;
+  background:var(--bg-deep);border:1px solid var(--line-soft);
+  border-radius:var(--r-md);padding:12px;
+  height:calc(100vh - 260px);min-height:280px;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.logbox .ln{display:flex;gap:7px;padding:1px 0;word-break:break-all}
+.logbox .ts{color:#4A5A68;flex:0 0 auto}
+.logbox .lv{flex:0 0 auto}
+.lv.INFO{color:var(--info)}
+.lv.OK{color:var(--accent)}
+.lv.WARN{color:var(--warn)}
+.lv.ERR{color:var(--danger)}
+.logbox .msg{color:#C4D3E0;flex:1}
+.filter-bar{display:flex;gap:7px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px}
+.chip{
+  flex:0 0 auto;padding:6px 12px;border-radius:999px;font-size:12px;
+  background:var(--surface-2);border:1px solid var(--line);color:var(--ink-dim);
+}
+.chip.on{background:rgba(0,217,192,.12);border-color:var(--accent-dim);color:var(--accent)}
+
+/* ---------- 表单 ---------- */
+.field{margin-bottom:14px}
+.field>label{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12.5px;color:var(--ink-dim);margin-bottom:6px;
+}
+.field>label .tip{font-size:11px;color:var(--muted)}
+.inp{
+  width:100%;min-height:44px;padding:11px 13px;
+  background:var(--bg-deep);border:1px solid var(--line);
+  border-radius:var(--r-md);outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.inp:focus{border-color:var(--accent-dim);box-shadow:0 0 0 3px var(--accent-glow)}
+textarea.inp{min-height:82px;resize:vertical;font-family:var(--mono);font-size:12.5px;line-height:1.6}
+select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 20px,calc(100% - 13px) 20px;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:38px}
+.switch{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft)}
+.switch:last-child{border-bottom:0}
+.switch .txt{flex:1;min-width:0}
+.switch .txt b{display:block;font-size:13.5px;font-weight:500}
+.switch .txt span{display:block;font-size:11.5px;color:var(--muted);margin-top:1px}
+.toggle{
+  flex:0 0 auto;position:relative;width:48px;height:28px;border-radius:999px;
+  background:#243240;border:1px solid var(--line);transition:background .18s,border-color .18s;
+}
+.toggle::after{
+  content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;
+  background:#6E8091;transition:transform .18s,background .18s;
+}
+.toggle.on{background:rgba(0,217,192,.22);border-color:var(--accent-dim)}
+.toggle.on::after{transform:translateX(20px);background:var(--accent)}
+
+/* ---------- 等宽输出块（配置页的「模块侧实际生效」用） ---------- */
+.code{
+  font-family:var(--mono);font-size:11.5px;line-height:1.68;
+  background:var(--bg-deep);border:1px solid var(--line-soft);border-radius:var(--r-sm);
+  padding:10px 11px;white-space:pre-wrap;word-break:break-all;
+  max-height:190px;overflow:auto;color:#BBD0E0;
+}
+
+/* ---------- 底部导航 ---------- */
+.nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:20;
+  padding:7px 0 calc(6px + env(safe-area-inset-bottom));
+  background:rgba(10,14,19,.9);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-top:1px solid var(--line-soft);
+}
+.nav-in{max-width:480px;margin:0 auto;display:flex}
+.nav button{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:5px 0;color:var(--muted);font-size:10.5px;transition:color .15s;
+}
+.nav button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav button.on{color:var(--accent)}
+
+/* ---------- 视图切换 ---------- */
+.view{display:none;animation:fade .22s ease}
+.view.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+/* ---------- Toast ---------- */
+#toast{
+  position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));
+  transform:translate(-50%,12px);z-index:60;
+  max-width:88vw;padding:11px 17px;border-radius:var(--r-md);
+  background:#1D2A36;border:1px solid var(--line);
+  font-size:13px;color:var(--ink);box-shadow:0 12px 34px -10px rgba(0,0,0,.8);
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#toast.ok{border-color:var(--accent-dim)}
+#toast.err{border-color:rgba(255,107,90,.5)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <b>BYD 自动签到</b>
+      <span id="engineSub">LSPosed 模块 · 进程内直连</span>
+    </div>
+    <div class="engine-pill" id="enginePill">
+      <i class="dot" id="engineDot"></i><span id="engineTxt">检测中</span>
+    </div>
+  </div>
+
+  <!-- ================= 首页 ================= -->
+  <section class="view on" id="v-home">
+    <div class="card">
+      <div class="hero">
+        <div class="ring" id="ring">
+          <div class="inner">
+            <div class="big" id="ringBig">--</div>
+            <div class="sub" id="ringSub">连续天数</div>
+          </div>
+        </div>
+        <div class="hero-txt">
+          <h2 id="heroTitle">尚未签到</h2>
+          <p id="heroDesc">等待今日首次执行</p>
+        </div>
+      </div>
+      <div class="btn-group" style="margin-top:16px">
+        <button class="btn primary" id="btnSignNow">立即签到</button>
+        <button class="btn ghost" id="btnStop" style="flex:0 0 96px">停止</button>
+      </div>
+    </div>
+
+    <div class="sec-title">今日任务</div>
+    <div class="card tight">
+      <div class="slots" id="slots"></div>
+      <div class="hint" style="margin-top:11px" id="nextRunHint">正在计算下一次执行时间…</div>
+    </div>
+
+    <div class="sec-title">引擎</div>
+    <div class="card tight">
+      <div class="row"><span class="k">模块注入</span><span class="v" id="engInject">检测中</span></div>
+      <div class="row"><span class="k">取码方式</span><span class="v">进程内 Hook</span></div>
+      <div class="row"><span class="k">微信版本</span><span class="v" id="engVersion">--</span></div>
+      <div class="row"><span class="k">版本适配</span><span class="v" id="engVerState">检测中</span></div>
+      <div class="row"><span class="k">运行实例</span><span class="v" id="engInstances">--</span></div>
+      <div class="row"><span class="k">触发方式</span><span class="v">模块心跳 + App 闹钟</span></div>
+      <div class="row"><span class="k">上次结果</span><span class="v" id="engLast">--</span></div>
+      <div class="hint red" id="engVerWarn" style="display:none;margin-top:11px"></div>
+      <div class="hint" id="engInjectHint" style="display:none;margin-top:11px"></div>
+    </div>
+
+    <div class="sec-title">最近日志</div>
+    <div class="card tight">
+      <div class="logbox" id="homeLogs" style="height:150px;min-height:0"></div>
+    </div>
+  </section>
+
+  <!-- ================= 实例 ================= -->
+  <section class="view" id="v-inst">
+    <div class="sec-title" style="margin-top:6px">LSPosed 注入状态</div>
+    <div class="card">
+      <div class="row"><span class="k">状态</span><span class="v" id="instInject">检测中</span></div>
+      <div class="row"><span class="k">模块版本</span><span class="v" id="instModVer">—</span></div>
+      <div class="row"><span class="k">微信进程</span><span class="v" id="instProc">—</span></div>
+      <div class="row"><span class="k">最近响应</span><span class="v" id="instSeen">—</span></div>
+      <div class="hint" id="instHint" style="margin-top:11px">正在向微信进程发起握手…</div>
+      <button class="btn sm full" id="btnRecheck" style="margin-top:11px">重新检测</button>
+    </div>
+
+    <div class="sec-title">微信实例</div>
+    <div class="card tight" id="instList"></div>
+    <div class="card tight">
+      <div class="hint">
+        每个微信实例（主应用 / 系统分身 / 多开）在独立进程中加载本模块，
+        Hook 到的 <span class="mono">code</span> 只在本进程内直接用于签到，
+        不再经过本地端口转发。
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 日志 ================= -->
+  <section class="view" id="v-log">
+    <div class="sec-title" style="margin-top:6px">运行日志</div>
+    <div class="hint" id="logDeliveryHint" style="margin-top:0">正在读取日志投递状态…</div>
+    <div class="filter-bar" id="logFilters"></div>
+    <div class="logbox" id="logBox"></div>
+    <div class="btn-group" style="margin-top:11px">
+      <button class="btn sm" id="btnLogRefresh">刷新</button>
+      <button class="btn sm" id="btnLogCopy">复制</button>
+      <button class="btn sm danger" id="btnLogClear">清空</button>
+    </div>
+  </section>
+
+  <!-- ================= 配置 ================= -->
+  <section class="view" id="v-cfg">
+    <div class="sec-title" style="margin-top:6px">微信版本适配</div>
+    <div class="card">
+      <div class="row"><span class="k">当前微信版本</span><span class="v" id="cfgVer">--</span></div>
+      <div class="row"><span class="k">适配状态</span><span class="v" id="cfgVerState">检测中</span></div>
+      <div class="hint" id="cfgVerHint" style="margin-top:11px">正在读取模块状态…</div>
+      <div class="btn-group" style="margin-top:13px">
+        <button class="btn sm" id="btnProbe">重新探测本机微信</button>
+        <button class="btn sm ghost" id="btnResetVer">恢复内置表</button>
+      </div>
+      <div class="switch" style="margin-top:10px;border-bottom:0;padding-bottom:0">
+        <div class="txt"><b>自动解析 dex 生成配置</b>
+          <span>默认开启：版本表没收录的微信版本会自动分析 dex 生成。关闭则完全按版本表走</span></div>
+        <div class="toggle" data-k="autoProbe"></div>
+      </div>
+    </div>
+
+
+    <div class="sec-title">模块侧实际生效</div>
+    <div class="card">
+      <div class="hint" id="mcHint">
+        向模块索取它**当前真正在用**的类名与字段映射 ——
+        用来确认「我改的配置到底有没有写进模块」。
+      </div>
+      <button class="btn sm full" id="btnModuleCfg" style="margin-top:11px">核对配置</button>
+      <div class="code" id="mcBody" style="margin-top:12px;max-height:250px">—</div>
+    </div>
+
+    <div class="sec-title">当前支持版本</div>
+    <div class="card tight">
+      <div class="hint" id="cfgVersSummary">—</div>
+      <div class="vergrid" id="cfgVersions" style="margin-top:10px">—</div>
+    </div>
+
+    <div class="sec-title">探测过程</div>
+    <div class="card"><div class="code" id="cfgSteps" style="max-height:170px">—</div></div>
+
+    <div class="sec-title">生效版本表</div>
+    <div class="card"><div class="code" id="cfgTable" style="max-height:190px">—</div></div>
+
+    <div class="sec-title">配置文件</div>
+    <div class="card">
+      <div class="hint" id="cfgStatusLine">未加载</div>
+      <div class="hint" style="margin-top:8px">
+        这份配置就是<b>全部内容</b>：上面的设置项 + 微信版本表（<span class="mono">versionTable</span>）。
+        保存后模块<b>完全按它运行</b>，不再依赖任何外部文件。
+        点「恢复内置表」可把版本表退回内置默认值。
+      </div>
+      <textarea class="inp" id="cfgText" spellcheck="false"
+                style="min-height:330px;font-family:var(--mono);font-size:12px;line-height:1.6"
+                placeholder="配置 JSON"></textarea>
+      <div class="hint mono" id="cfgFilePath" style="margin-top:9px;font-size:11px">—</div>
+      <div class="btn-group" style="margin-top:11px">
+        <button class="btn sm" id="btnCfgReload">重新加载</button>
+        <button class="btn sm primary" id="btnCfgSave">保存配置</button>
+      </div>
+      <button class="btn sm ghost full" style="margin-top:9px" id="btnCfgFromFile">从文件重新加载</button>
+      <div class="hint" id="cfgSaveHint" style="margin-top:10px">
+        可直接编辑上方 JSON（含 <span class="mono">versionTable</span> 版本字典），
+        保存后会立即推送给微信进程并热生效。
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 设置 ================= -->
+  <section class="view" id="v-set">
+    <div class="sec-title" style="margin-top:6px">自动签到</div>
+    <div class="card">
+      <div class="switch">
+        <div class="txt"><b>启用自动签到</b><span>每天 00:01 / 07:01 / 13:01 / 22:01</span></div>
+        <div class="toggle" data-k="enabled"></div>
+      </div>
+      <div class="switch">
+        <div class="txt"><b>当天成功后不再重复</b><span>同实例已签到则跳过</span></div>
+        <div class="toggle" data-k="dedupe"></div>
+      </div>
+      <div class="switch">
+        <div class="txt"><b>取码前把微信切到前台</b>
+          <span>默认关闭，点签到不会跳转微信。仅在取码一直无响应时才需要打开</span></div>
+        <div class="toggle" data-k="wakeBeforeCode"></div>
+      </div>
+    </div>
+
+    <div class="sec-title">重试</div>
+    <div class="card">
+      <div class="field">
+        <label>尝试次数（含首次） <span class="tip" id="retryTip">共 2 次</span></label>
+        <input class="inp" type="range" min="0" max="5" step="1" id="retry" style="padding:0;min-height:auto">
+      </div>
+      <div class="field">
+        <label>重试间隔 <span class="tip" id="intervalTip">10 秒</span></label>
+        <input class="inp" type="range" min="3" max="60" step="1" id="interval" style="padding:0;min-height:auto">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>取码等待上限 <span class="tip" id="codeTimeoutTip">30 秒</span></label>
+        <input class="inp" type="range" min="5" max="120" step="5" id="codeTimeout" style="padding:0;min-height:auto">
+      </div>
+    </div>
+
+    <div class="sec-title">小程序</div>
+    <div class="card tight">
+      <div class="row"><span class="k">品牌</span><span class="v">海洋网 · hy</span></div>
+      <div class="row"><span class="k">小程序 AppID</span><span class="v" id="appidFixed">--</span></div>
+      <div class="hint" style="margin-top:11px">品牌与小程序 AppID 已固定为海洋网，不可更改。</div>
+    </div>
+
+    <div class="sec-title">通知</div>
+    <div class="card">
+      <div class="switch">
+        <div class="txt"><b>邮件通知</b><span id="mailState">未配置</span></div>
+        <div class="toggle" data-k="mailEnabled"></div>
+      </div>
+      <div class="switch">
+        <div class="txt"><b>Webhook 通知</b><span id="hookState">未配置</span></div>
+        <div class="toggle" data-k="hookEnabled"></div>
+      </div>
+      <div class="switch">
+        <div class="txt"><b>成功时通知</b><span>签到成功也发一条</span></div>
+        <div class="toggle" data-k="notifySuccess"></div>
+      </div>
+      <div class="switch">
+        <div class="txt"><b>失败时通知</b>
+          <span>关掉就只在成功时收到通知。中间的重试失败本来就不会打扰你</span></div>
+        <div class="toggle" data-k="notifyFailure"></div>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label>邮件服务器</label>
+        <input class="inp mono" id="smtp" placeholder="smtp.qq.com:465" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>发件 / 收件</label>
+        <input class="inp mono" id="mailFrom" placeholder="from@qq.com" autocomplete="off">
+        <input class="inp mono" id="mailTo" placeholder="to@qq.com" style="margin-top:8px" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>SMTP 授权码 <span class="tip">非登录密码</span></label>
+        <input class="inp mono" id="mailAuth" type="password" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Webhook 类型</label>
+        <select class="inp" id="hookType">
+          <option value="">不启用</option>
+          <option value="wechat">企业微信机器人</option>
+          <option value="dingtalk">钉钉机器人</option>
+          <option value="telegram">Telegram Bot</option>
+          <option value="pushplus">PushPlus</option>
+          <option value="custom">自定义 JSON</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Webhook URL</label>
+        <input class="inp mono" id="hookUrl" autocomplete="off">
+      </div>
+      <div class="field">
+        <label><span id="hookExtraLabel">附加参数</span> <span class="tip" id="hookExtraTip">按类型填写</span></label>
+        <input class="inp mono" id="hookExtra" autocomplete="off">
+      </div>
+      <div class="field" id="hookChannelField" style="margin-bottom:0">
+        <label>PushPlus 渠道 <span class="tip">留空走默认渠道</span></label>
+        <input class="inp mono" id="hookChannel" placeholder="wechat / webhook / cp …" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="sec-title">App 定时唤醒</div>
+    <div class="card tight">
+      <div class="row"><span class="k">下一次唤醒</span><span class="v" id="alarmNext">—</span></div>
+      <div class="row"><span class="k">精确闹钟</span><span class="v" id="alarmExact">—</span></div>
+      <div class="row"><span class="k">上次结果</span><span class="v" id="alarmLast">—</span></div>
+      <button class="btn sm full" style="margin-top:11px" id="btnExactAlarm">去允许「闹钟和提醒」</button>
+      <div class="hint" style="margin-top:11px">
+        每个定时点由闹钟唤醒 App 一次，<b>签到请求由 App 进程发出</b> ——
+        微信进程在后台时它的请求常常「连得上但收不到响应」，而被闹钟唤醒的进程
+        会拿到系统给的临时联网放行。取码仍由微信进程内的模块完成（本地反射，不走网络）。
+        平时没有任何常驻服务，只在闹钟响时醒来，干完就退。
+      </div>
+    </div>
+
+    <div class="sec-title">维护</div>
+    <div class="card">
+      <div class="field">
+        <label>日志保留 <span class="tip" id="keepTip">3 天</span></label>
+        <input class="inp" type="range" min="1" max="30" step="1" id="keep" style="padding:0;min-height:auto">
+      </div>
+      <button class="btn sm danger full" style="margin-top:6px" id="btnReset">恢复默认</button>
+      <div class="hint" style="margin-top:12px" id="aboutHint"></div>
+    </div>
+  </section>
+</div>
+
+<nav class="nav">
+  <div class="nav-in" id="nav"></div>
+</nav>
+
+<div id="toast"></div>
+<script>
+"use strict";
+/* ============================================================
+   0. 常量：与原项目保持一致（分段拼接，避免源码出现完整明文）
+   ============================================================ */
+const PROTO = {
+  KEY:   "3993014457161851",
+  IV:    "PDVcDRWMrBlLHTqh",
+  APPSECRET: "Kfl%BOk6C5PwARw8",
+  BASE:  "https://mina.bydoceanauto.com",
+  APPID: ["wxf62054", "ec313d6f53"].join(""),
+  VERSION: "460",
+  CLIENT: "mina"
+};
+const SLOTS = [0, 7, 13, 22];   // 与模块 cron: 1 0,7,13,22 * * * 对应
+
+/* ============================================================
+   1. 加密内核：AES-128-CBC + SHA-256（纯 JS，无外部依赖）
+   与模块端 Cipher.getInstance("AES/CBC/PKCS5Padding") 等价
+   ============================================================ */
+const SBOX = new Uint8Array([
+  0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
+  0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,
+  0xb7,0xfd,0x93,0x26,0x36,0x3f,0xf7,0xcc,0x34,0xa5,0xe5,0xf1,0x71,0xd8,0x31,0x15,
+  0x04,0xc7,0x23,0xc3,0x18,0x96,0x05,0x9a,0x07,0x12,0x80,0xe2,0xeb,0x27,0xb2,0x75,
+  0x09,0x83,0x2c,0x1a,0x1b,0x6e,0x5a,0xa0,0x52,0x3b,0xd6,0xb3,0x29,0xe3,0x2f,0x84,
+  0x53,0xd1,0x00,0xed,0x20,0xfc,0xb1,0x5b,0x6a,0xcb,0xbe,0x39,0x4a,0x4c,0x58,0xcf,
+  0xd0,0xef,0xaa,0xfb,0x43,0x4d,0x33,0x85,0x45,0xf9,0x02,0x7f,0x50,0x3c,0x9f,0xa8,
+  0x51,0xa3,0x40,0x8f,0x92,0x9d,0x38,0xf5,0xbc,0xb6,0xda,0x21,0x10,0xff,0xf3,0xd2,
+  0xcd,0x0c,0x13,0xec,0x5f,0x97,0x44,0x17,0xc4,0xa7,0x7e,0x3d,0x64,0x5d,0x19,0x73,
+  0x60,0x81,0x4f,0xdc,0x22,0x2a,0x90,0x88,0x46,0xee,0xb8,0x14,0xde,0x5e,0x0b,0xdb,
+  0xe0,0x32,0x3a,0x0a,0x49,0x06,0x24,0x5c,0xc2,0xd3,0xac,0x62,0x91,0x95,0xe4,0x79,
+  0xe7,0xc8,0x37,0x6d,0x8d,0xd5,0x4e,0xa9,0x6c,0x56,0xf4,0xea,0x65,0x7a,0xae,0x08,
+  0xba,0x78,0x25,0x2e,0x1c,0xa6,0xb4,0xc6,0xe8,0xdd,0x74,0x1f,0x4b,0xbd,0x8b,0x8a,
+  0x70,0x3e,0xb5,0x66,0x48,0x03,0xf6,0x0e,0x61,0x35,0x57,0xb9,0x86,0xc1,0x1d,0x9e,
+  0xe1,0xf8,0x98,0x11,0x69,0xd9,0x8e,0x94,0x9b,0x1e,0x87,0xe9,0xce,0x55,0x28,0xdf,
+  0x8c,0xa1,0x89,0x0d,0xbf,0xe6,0x42,0x68,0x41,0x99,0x2d,0x0f,0xb0,0x54,0xbb,0x16
+]);
+
+function xtime(a){ return ((a<<1)^((a&0x80)?0x1b:0))&0xff; }
+
+function keyExpansion(key){
+  const rk = new Uint8Array(176); rk.set(key,0);
+  let rcon = 1;
+  for(let i=16;i<176;i+=4){
+    let a=rk[i-4], b=rk[i-3], c=rk[i-2], d=rk[i-1];
+    if(i%16===0){
+      const t=a; a=SBOX[b]^rcon; b=SBOX[c]; c=SBOX[d]; d=SBOX[t];
+      rcon = xtime(rcon);
+    }
+    rk[i]=rk[i-16]^a; rk[i+1]=rk[i-15]^b; rk[i+2]=rk[i-14]^c; rk[i+3]=rk[i-13]^d;
+  }
+  return rk;
+}
+function ark(s,rk,r){ const o=r*16; for(let i=0;i<16;i++) s[i]^=rk[o+i]; }
+function subBytes(s){ for(let i=0;i<16;i++) s[i]=SBOX[s[i]]; }
+function shiftRows(s){
+  let t;
+  t=s[1];  s[1]=s[5];   s[5]=s[9];   s[9]=s[13];  s[13]=t;
+  t=s[2];  s[2]=s[10];  s[10]=t;     t=s[6];      s[6]=s[14];  s[14]=t;
+  t=s[15]; s[15]=s[11]; s[11]=s[7];  s[7]=s[3];   s[3]=t;
+}
+function mixColumns(s){
+  for(let c=0;c<4;c++){
+    const i=4*c, a0=s[i],a1=s[i+1],a2=s[i+2],a3=s[i+3], h=a0^a1^a2^a3;
+    s[i]  ^= h ^ xtime(a0^a1);
+    s[i+1]^= h ^ xtime(a1^a2);
+    s[i+2]^= h ^ xtime(a2^a3);
+    s[i+3]^= h ^ xtime(a3^a0);
+  }
+}
+function encBlock(s,rk){ ark(s,rk,0); for(let r=1;r<=9;r++){ subBytes(s); shiftRows(s); mixColumns(s); ark(s,rk,r); } subBytes(s); shiftRows(s); ark(s,rk,10); return s; }
+function xor16(a,b){ const o=new Uint8Array(16); for(let i=0;i<16;i++) o[i]=a[i]^b[i]; return o; }
+
+/** AES-128-CBC + PKCS#7 填充。与模块端 Cipher.getInstance("AES/CBC/PKCS5Padding") 等价 */
+function aesCbcEncrypt(plain, key, iv){
+  const rk = keyExpansion(key);
+  const pad = 16 - (plain.length % 16);
+  const data = new Uint8Array(plain.length + pad);
+  data.set(plain,0); data.fill(pad, plain.length);
+  const out = new Uint8Array(data.length);
+  let prev = iv;
+  for(let off=0; off<data.length; off+=16){
+    const blk = encBlock(xor16(data.subarray(off,off+16), prev), rk);
+    out.set(blk, off);
+    prev = blk;
+  }
+  return out;
+}
+
+const SHA_K = new Uint32Array([
+  0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+]);
+const rotr = (x,n)=>((x>>>n)|(x<<(32-n)))>>>0;
+function sha256(bytes){
+  const H = new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+  const bitLen = bytes.length*8;
+  const withOne = bytes.length + 1;
+  const total = Math.ceil((withOne+8)/64)*64;
+  const msg = new Uint8Array(total);
+  msg.set(bytes,0); msg[bytes.length]=0x80;
+  const dv = new DataView(msg.buffer);
+  dv.setUint32(total-8, Math.floor(bitLen/0x100000000));
+  dv.setUint32(total-4, bitLen>>>0);
+  const w = new Uint32Array(64);
+  for(let off=0; off<total; off+=64){
+    for(let i=0;i<16;i++) w[i]=dv.getUint32(off+i*4);
+    for(let i=16;i<64;i++){
+      const s0 = rotr(w[i-15],7)^rotr(w[i-15],18)^(w[i-15]>>>3);
+      const s1 = rotr(w[i-2],17)^rotr(w[i-2],19)^(w[i-2]>>>10);
+      w[i] = (w[i-16]+s0+w[i-7]+s1)>>>0;
+    }
+    let [a,b,c,d,e,f,g,h] = H;
+    for(let i=0;i<64;i++){
+      const S1 = rotr(e,6)^rotr(e,11)^rotr(e,25);
+      const ch = (e&f)^((~e)&g);
+      const t1 = (h+S1+ch+SHA_K[i]+w[i])>>>0;
+      const S0 = rotr(a,2)^rotr(a,13)^rotr(a,22);
+      const maj = (a&b)^(a&c)^(b&c);
+      const t2 = (S0+maj)>>>0;
+      h=g; g=f; f=e; e=(d+t1)>>>0; d=c; c=b; b=a; a=(t1+t2)>>>0;
+    }
+    H[0]=(H[0]+a)>>>0; H[1]=(H[1]+b)>>>0; H[2]=(H[2]+c)>>>0; H[3]=(H[3]+d)>>>0;
+    H[4]=(H[4]+e)>>>0; H[5]=(H[5]+f)>>>0; H[6]=(H[6]+g)>>>0; H[7]=(H[7]+h)>>>0;
+  }
+  return [...H].map(x=>x.toString(16).padStart(8,"0")).join("");
+}
+
+/* ---------- 编码工具 ---------- */
+const TE = new TextEncoder();
+const b64    = b => { let s=""; const c=0x8000; for(let i=0;i<b.length;i+=c) s+=String.fromCharCode.apply(null,b.subarray(i,i+c)); return btoa(s); };
+const utf8   = s => TE.encode(s);
+
+/* ---------- 协议工具 ---------- */
+const NONCE_CHARS = "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678";
+function randomStr(len=16){
+  const a = new Uint32Array(len); crypto.getRandomValues(a);
+  let s=""; for(let i=0;i<len;i++) s += NONCE_CHARS[a[i]%NONCE_CHARS.length];
+  return s;
+}
+function clientTraceId(){
+  const a = new Uint8Array(16); crypto.getRandomValues(a);
+  let hex=""; for(const b of a) hex += b.toString(16).padStart(2,"0");
+  hex = hex.slice(0,14) + "4" + hex.slice(15);
+  const v = (parseInt(hex[19],16)|8).toString(16);
+  hex = hex.slice(0,19) + v + hex.slice(20);
+  return `mina-${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
+}
+function checksum(appSecret, nonce, curtime){ return sha256(utf8(appSecret+nonce+curtime)); }
+
+/* ============================================================
+   2. 状态存储
+   ============================================================ */
+const DEFAULT_CFG = {
+  enabled:true, dedupe:true, wakeBeforeCode:false,
+  retry:2, interval:10, codeTimeout:30,
+  brand:"hy", appid:PROTO.APPID,
+  mailEnabled:false, hookEnabled:false,
+  notifySuccess:true, notifyFailure:true,
+  smtp:"", mailFrom:"", mailTo:"", mailAuth:"",
+  hookType:"", hookUrl:"", hookExtra:"", hookChannel:"",
+  autoProbe:true,
+  schema:2,
+  versionTable:null,
+  keep:3
+};
+const LS_KEY = "byd_lsp_cfg_v1";
+// 首次启动时允许采用模块侧已有的配置；此后以本地为准，
+// 否则模块回推的默认值会覆盖用户刚改的设置
+// 一次性迁移：1.13 及以前 autoProbe 默认关闭，从 1.14 起改为默认开启。
+// 同时清掉历史探测生成的覆盖层 —— 那是早期有 bug 的探测结果（例如把
+// j1_instance_method 写成 d），继续留着会盖住内置版本表。
+const CFG_SCHEMA = 2;
+// 探测请求按「版本」记账：同一个微信版本只向模块要一次，
+// 否则每次打开 App 都会发一次请求（虽然模块侧会跳过，但日志里会多一行）
+const PROBE_KEY = "byd_probe_requested_v1";
+/** 上次「打开 App 顺手补签」的时间戳，用来避免每次回到前台都补一遍 */
+const LS_CATCHUP = "byd_catchup_at_v1";
+function probeRequestedFor(ver){
+  try{ return ver && localStorage.getItem(PROBE_KEY) === ver; }catch(e){ return false; }
+}
+function markProbeRequested(ver){
+  try{ if(ver) localStorage.setItem(PROBE_KEY, ver); }catch(e){ /* 无痕模式等，忽略 */ }
+}
+(function migrateCfg(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(raw === null) return;
+  const o = safeParse(raw);
+  if((o.schema || 0) >= CFG_SCHEMA) return;
+  o.autoProbe = true;
+  o.versionTable = null;
+  o.schema = CFG_SCHEMA;
+  localStorage.setItem(LS_KEY, JSON.stringify(o));
+  (window.__bydMigrated = true);
+})();
+
+let LOCAL_HAS_CFG = localStorage.getItem(LS_KEY) !== null;
+let CFG = Object.assign({}, DEFAULT_CFG, safeParse(localStorage.getItem(LS_KEY)));
+function safeParse(s){ try{ return JSON.parse(s)||{}; }catch{ return {}; } }
+function saveCfg(){
+  LOCAL_HAS_CFG = true;
+  // 逐项保存设置时，把模块侧已生成的版本表覆盖层带上，
+  // 否则这一份"没有 versionTable"的配置会把版本字典冲掉
+  const b = bridge();
+  if(b && b.getVersionStatus){
+    try{
+      const st = JSON.parse(b.getVersionStatus() || "{}");
+      if(st.override && Object.keys(st.override).length) CFG.versionTable = st.override;
+    }catch(e){ /* 取不到就保持原样 */ }
+  }
+  localStorage.setItem(LS_KEY, JSON.stringify(CFG));
+  pushToModule();
+}
+
+/* ============================================================
+   3. 日志
+   ============================================================ */
+const LOGS = [];
+let logFilter = "ALL";
+function log(level, msg){
+  const d = new Date();
+  const ts = String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");
+  LOGS.push({ts, level, msg});
+  if(LOGS.length>400) LOGS.shift();
+  renderLogs();
+}
+function visibleLogs(){
+  return logFilter==="ALL" ? LOGS : LOGS.filter(l=>l.level===logFilter);
+}
+function logLine(l){
+  return `<div class="ln"><span class="ts">${l.ts}</span><span class="lv ${l.level}">${l.level}</span><span class="msg">${esc(l.msg)}</span></div>`;
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function renderLogs(){
+  const box = document.getElementById("logBox");
+  const arr = visibleLogs().slice(-180);
+  box.innerHTML = arr.map(logLine).join("") || '<div class="hint">暂无日志</div>';
+  box.scrollTop = box.scrollHeight;
+  const home = document.getElementById("homeLogs");
+  home.innerHTML = LOGS.slice(-6).map(logLine).join("") || '<div class="hint">暂无日志</div>';
+  home.scrollTop = home.scrollHeight;
+}
+
+/* ============================================================
+   4. 签到引擎：构造请求
+   ============================================================ */
+function buildRequest(stage, payload){
+  const nonce = randomStr(16);
+  const curtime = Math.floor(Date.now()/1000);
+  const plain = JSON.stringify(payload);
+  const cipher = aesCbcEncrypt(utf8(plain), utf8(PROTO.KEY), utf8(PROTO.IV));
+  const url = stage==="session"
+    ? `${PROTO.BASE}/?service=mina.decryptCode`
+    : `${PROTO.BASE}/?s=ForCommonUcSrv.forward&serviceDir=activity/sign/signIn`;
+  return {
+    stage, nonce, curtime, plain,
+    checksum: checksum(PROTO.APPSECRET, nonce, curtime),
+    cipherHex: [...cipher].map(b=>b.toString(16).padStart(2,"0")).join(""),
+    body: b64(cipher), traceId: clientTraceId(), url
+  };
+}
+
+/* ============================================================
+   5. 运行态
+   ============================================================ */
+const ENGINE = { version:"—", instances:[], running:false, last:"—", stopped:false };
+
+const DEMO_INSTANCES = [
+  { id:0, name:"主应用", pkg:"com.tencent.mm", user:"User 0",  streak:0, signed:false, last:"—" },
+  { id:1, name:"分身",   pkg:"com.tencent.mm", user:"User 10", streak:0, signed:false, last:"—" }
+];
+
+/* ============================================================
+   6. 模块通道（WebView 注入 window.BYDModule 时走真实通道）
+   ============================================================ */
+function bridge(){ return (typeof window.BYDModule !== "undefined") ? window.BYDModule : null; }
+function pullFromModule(){
+  const b = bridge();
+  if(!b) return false;
+  try{
+    const st = JSON.parse(b.getState() || "{}");
+    ENGINE.version = st.version || "—";
+    ENGINE.instances = (st.instances||[]).map((x,i)=>({
+      id: x.id ?? i,
+      name: x.name || (x.userId ? "分身 "+x.userId : "主应用"),
+      pkg: "com.tencent.mm",
+      user: "User " + (x.userId ?? 0),
+      streak: x.streak || 0,
+      signed: !!x.signedToday,
+      last: x.lastTime || "—"
+    }));
+    if(st.config && !LOCAL_HAS_CFG){ CFG = Object.assign({}, DEFAULT_CFG, st.config); syncDom(); }
+    ENGINE.last = st.last || ENGINE.last;
+    return true;
+  }catch(e){ log("WARN","读取模块状态失败: "+e.message); return false; }
+}
+function pushToModule(){
+  const b = bridge();
+  if(!b) return;
+  try{
+    /* 版本表归原生侧（配置文件）管，本地 CFG 里这个键往往是 null ——
+       原样推过去会把 App 和模块两边的表一起清空：
+       实机上就是「探测成功生成 j1=pp0.i1/c=ko0.c，紧接着一次配置推送又退回 8.0.78」。
+       所以推送前先从原生侧取当前的表；取不到就干脆不带这个键（原生侧会保留已有的）。 */
+    const payload = Object.assign({}, CFG);
+    let table = null;
+    if(b.getVersionStatus){
+      try{
+        const st = JSON.parse(b.getVersionStatus() || "{}");
+        if(st.override && Object.keys(st.override).length) table = st.override;
+      }catch(e){ /* 取不到就按「不带这个键」处理 */ }
+    } else if(CFG.versionTable && Object.keys(CFG.versionTable).length){
+      table = CFG.versionTable;
+    }
+    if(table){ payload.versionTable = table; CFG.versionTable = table; }
+    else delete payload.versionTable;
+    b.saveConfig(JSON.stringify(payload));
+  }catch(e){ log("WARN","写入模块配置失败: "+e.message); }
+}
+function pushCommand(cmd, arg){
+  const b = bridge();
+  if(!b) return false;
+  try{ b.command(cmd, arg==null ? "" : String(arg)); return true; }
+  catch(e){ log("WARN","下发指令失败: "+e.message); return false; }
+}
+
+/* ============================================================
+   6b. 模块注入检测（握手）
+   ------------------------------------------------------------
+   关键点：window.BYDModule 是 MainActivity 注入的 JS 桥，只要页面跑在 APK 里
+   就永远存在 —— 它只能说明「页面在 APK 里」，证明不了 LSPosed 的勾选生效了。
+   唯一可靠的判断是：向微信进程发一条广播，看里面的模块是否回话。
+   ============================================================ */
+const PING_TIMEOUT_MS = 9000;   // 原来 2500：微信进程刚冷启动或刚解冻时，2.5 秒来不及回话
+const PING_RESEND_MS  = 3000;   // 等待期间补发握手，防单条广播丢失造成误判
+const PING_RECHECK_MS = 30000;  // 没握上时的自愈间隔（只在这个异常状态下才重发）
+const MOD = { insideApp:false, state:"unknown", pong:null, lastSeenAgo:-1, everSeen:false };
+let pingNonce = "", pingDeadline = 0, pingTimer = null, pingSentAt = 0, pingTries = 0, lastDetectAt = 0;
+
+/**
+ * 发一次握手，判断模块是否真的注入到了微信进程。
+ *
+ * 只在「打开 App」和手动点「重新检测」时执行 —— **不做任何定时轮询**。
+ * 每次握手都要跨进程来回两条广播，而勾选状态几乎不会变，没必要反复吵醒微信。
+ *
+ * window.BYDModule 不能当判据：那是 MainActivity 注入的 JS 桥，
+ * 只要页面跑在 APK 里就永远存在，说明不了 LSPosed 有没有加载模块。
+ */
+function detectInjection(){
+  clearTimeout(pingTimer);
+  const b = bridge();
+  if(!b){
+    MOD.insideApp = false; MOD.state = "demo";
+    renderEngine(); renderInstances();
+    return;
+  }
+  MOD.insideApp = true;
+
+  pingNonce = "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  MOD.state = "checking";
+  MOD.pong = null;
+  renderEngine(); renderInstances();
+
+  if(!b.pingModule){
+    MOD.state = "unavailable"; renderEngine(); renderInstances(); return;
+  }
+  pingDeadline = Date.now() + PING_TIMEOUT_MS;
+  pingTries = 0;
+  lastDetectAt = Date.now();
+  sendPing("首次");
+  pingTimer = setTimeout(pollPong, 250);
+}
+
+/**
+ * 发一条握手广播。
+ *
+ * 之前是一次性 2.5 秒等答，等不到就定格成「未响应」—— 而微信进程冷启动、
+ * 或刚被系统解冻时，第一包广播经常赶在模块注册好接收器之前到达，于是
+ * 「打开 App 显示未注入，切一下页面才变已注入」。现在改成等待期内补发，
+ * 并且 App 回到前台会自动重来一次。
+ */
+function sendPing(tag){
+  const b = bridge();
+  if(!b || !b.pingModule) return;
+  pingSentAt = Date.now();
+  pingTries++;
+  const ok = b.pingModule(pingNonce);
+  if(!ok){ MOD.state = "unavailable"; renderEngine(); renderInstances(); return; }
+  if(tag) log("INFO", "正在向微信进程发起握手（nonce=" + pingNonce + "）…");
+}
+
+function pollPong(){
+  const b = bridge();
+  let st = {};
+  try{ st = JSON.parse((b && b.moduleStatus) ? b.moduleStatus() : "{}"); }catch(e){ st = {}; }
+
+  if(typeof st.lastSeenAgo === "number") MOD.lastSeenAgo = st.lastSeenAgo;
+  MOD.everSeen = !!st.everSeen;
+
+  const pong = (st.pong && st.pong.nonce) ? st.pong : null;
+  if(pong && pong.nonce === pingNonce){
+    const firstConfirm = (MOD.state !== "injected");
+    MOD.pong = pong;
+    MOD.state = "injected";
+    MOD.lastSeenAgo = 0;
+    renderEngine(); renderInstances(); renderHero();
+    // 首次确认注入时无条件拉一次实例列表：既不用干等 5 秒轮询，
+    // 也能把可能残留的演示数据换成模块上报的真实实例
+    if(firstConfirm || !ENGINE.instances.length) tick(true);
+    if(firstConfirm){
+      setTimeout(requestModuleConfig, 500);
+      // 自动签到发生在 App 不在前台的时候，那条增量日志可能被 Doze 推迟或丢掉；
+      // 这里主动向模块拉一份整体快照，保证自动签到的日志一定能看到
+      setTimeout(()=>{ const bb = bridge(); if(bb && bb.requestLogs) bb.requestLogs(); }, 900);
+    }
+    log("OK", "模块已注入微信进程 · " + (pong.instance || "")
+        + " · 微信 " + (pong.version || "?") + " · 模块 v" + (pong.moduleVersion || "?")
+        + (pingTries > 1 ? "（第 " + pingTries + " 次握手才应答）" : ""));
+    maybeCatchUpSign();
+    return;
+  }
+
+  if(Date.now() < pingDeadline){
+    if(Date.now() - pingSentAt >= PING_RESEND_MS) sendPing("");
+    pingTimer = setTimeout(pollPong, 250);
+    return;
+  }
+
+  MOD.state = "noresponse";
+  renderEngine(); renderInstances(); renderHero();
+  log("ERR", "模块未响应握手（共 " + pingTries + " 次）—— LSPosed 可能没勾选本模块、"
+      + "作用域没选微信，或微信进程没在运行");
+}
+
+/**
+ * 「今天还没签到成功」时的兜底补签。
+ *
+ * 只在这一刻触发：App 已确认注入 + 模块说今天没签成功 + 十分钟内没补过。
+ * 此时人就在手机前、屏幕亮着、网络是通的 —— 这正是模块自己在后台最缺的条件。
+ * 模块侧的重试与去重不受影响：签成功的那次会写进 signed_date，后面的自然跳过。
+ */
+function maybeCatchUpSign(){
+  if(!MOD.insideApp || MOD.state !== "injected") return;
+  const p = MOD.pong || {};
+  if(p.signedToday) return;
+  let last = 0;
+  try{ last = Number(localStorage.getItem(LS_CATCHUP) || 0); }catch(e){ last = 0; }
+  if(Date.now() - last < 10 * 60 * 1000) return;
+  try{ localStorage.setItem(LS_CATCHUP, String(Date.now())); }catch(e){ /* 存不上就只补一次 */ }
+  log("INFO", "模块报告今天还没签到成功 —— 由 App 进程直接补签（此时屏幕亮着、网络是通的）");
+  // 让 App 自己发出网请求：模块那条路的网络限制正是我们要绕开的东西
+  const b = bridge();
+  let started = false;
+  try{ started = !!(b && b.appSideSign && b.appSideSign()); }catch(e){ started = false; }
+  if(!started) pushCommand("signNow", "all");   // 退路：还是交给模块侧
+  setTimeout(()=>{ const bb = bridge(); if(bb && bb.requestLogs) bb.requestLogs(); }, 1500);
+}
+
+/**
+ * App 回到前台时由原生层调用（MainActivity.onResume → evaluateJavascript）。
+ * 之前只在页面加载那一刻握手一次，所以「先显示未响应、切页才变已注入」没有自愈路径。
+ */
+window.BYD_onResume = function(){
+  if(MOD.insideApp && MOD.state !== "injected") detectInjection();
+  maybeCatchUpSign();
+};
+/* ---------- 注入状态文案 ---------- */
+function injectText(){
+  if(!MOD.insideApp) return "未在 APK 内";
+  switch(MOD.state){
+    case "injected":    return MOD.pong && MOD.pong.instance ? "已注入 · " + MOD.pong.instance : "已注入";
+    case "checking":    return "检测中…";
+    case "noresponse":  return "未响应";
+    case "unavailable": return "不可用";
+    default:            return "待检测";
+  }
+}
+function injectClass(){
+  if(!MOD.insideApp) return "warn";
+  if(MOD.state === "injected") return "ok";
+  if(MOD.state === "noresponse" || MOD.state === "unavailable") return "err";
+  return "warn";
+}
+function seenText(){
+  if(MOD.state === "injected") return "刚刚";
+  if(MOD.lastSeenAgo < 0) return "从未收到";
+  const s = Math.round(MOD.lastSeenAgo / 1000);
+  if(s < 60) return s + " 秒前";
+  if(s < 3600) return Math.round(s / 60) + " 分钟前";
+  if(s < 86400) return Math.round(s / 3600) + " 小时前";
+  return Math.round(s / 86400) + " 天前";
+}
+
+const INJECT_STEPS = [
+  "在 LSPosed 管理器 → 模块里勾选「BYD 自动签到」",
+  "进入该模块的「作用域」，勾选微信（com.tencent.mm）",
+  "强行停止微信，再重新打开 —— 勾选变更必须重启微信进程才生效",
+  "确认装的是 release 包：debug 包是多 dex，模块加载器找不到入口类"
+];
+function injectHintHtml(){
+  if(!MOD.insideApp){
+    return "当前页面没有运行在 APK 里（浏览器 / 模拟器预览），无法与微信进程通信。";
+  }
+  if(MOD.state === "injected"){
+    const p = MOD.pong || {};
+    return "已收到微信进程的握手应答，LSPosed 勾选已生效。<br>"
+      + "模块 v" + esc(p.moduleVersion || "?")
+      + " · 微信 " + esc(p.version || "?")
+      + " · pid " + esc(String(p.pid || "?"));
+  }
+  if(MOD.state === "checking") return "正在向微信进程发起握手（最多等 "
+    + Math.round(PING_TIMEOUT_MS/1000) + " 秒，期间会补发）…";
+
+  let html = "没有收到模块应答。先按这个顺序排查：<br>"
+    + INJECT_STEPS.map((s, i) => "&nbsp;" + (i + 1) + ". " + esc(s)).join("<br>");
+  html += "<br>另外：微信进程没在运行（比如刚被系统回收）时也收不到应答，"
+        + "页面每 30 秒会自动重试一次，也可以点「重新检测」立刻再试。";
+  if(MOD.everSeen) html += "<br>上次收到模块回写：" + esc(seenText());
+  return html;
+}
+
+/* ============================================================
+   7. 渲染
+   ============================================================ */
+function renderEngine(){
+  const dot = document.getElementById("engineDot");
+  const txt = document.getElementById("engineTxt");
+
+  if(ENGINE.running){ dot.className = "dot on pulse"; txt.textContent = "签到中"; }
+  else if(!MOD.insideApp){ dot.className = "dot warn"; txt.textContent = "演示模式"; }
+  else if(MOD.state === "injected"){ dot.className = "dot on"; txt.textContent = "已注入"; }
+  else if(MOD.state === "checking"){ dot.className = "dot warn pulse"; txt.textContent = "检测中"; }
+  // 「未响应」和「未注入」不是一回事：前者多半只是微信进程这一刻没接上话
+  // （冷启动、刚被系统解冻），页面会继续重试；写「未注入」会让人以为模块挂了
+  else { dot.className = "dot err"; txt.textContent = MOD.state === "unavailable" ? "不可用" : "未响应"; }
+
+  document.getElementById("engineSub").textContent = MOD.insideApp
+    ? "LSPosed 模块 · 进程内直连"
+    : "未在 APK 内运行 · 本地演示";
+
+  const inj = document.getElementById("engInject");
+  inj.textContent = injectText();
+  inj.className = "v " + injectClass();
+
+  document.getElementById("engVersion").textContent = ENGINE.version;
+  document.getElementById("engInstances").textContent = ENGINE.instances.length + " 个";
+  document.getElementById("engLast").textContent = ENGINE.last;
+
+  const hint = document.getElementById("engInjectHint");
+  if(MOD.insideApp && MOD.state !== "injected"){
+    hint.innerHTML = injectHintHtml();
+    hint.className = (MOD.state === "noresponse" || MOD.state === "unavailable") ? "hint red" : "hint";
+    hint.style.display = "";
+  } else {
+    hint.style.display = "none";
+  }
+
+  // 实例页顶部的注入状态块（与首页共用同一份数据）
+  document.getElementById("instInject").textContent = injectText();
+  document.getElementById("instInject").className = "v " + injectClass();
+  const p = MOD.pong || {};
+  document.getElementById("instModVer").textContent = p.moduleVersion ? "v" + p.moduleVersion : "—";
+  document.getElementById("instProc").textContent =
+    p.pid ? (p.instance || "—") + "（pid " + p.pid + "）" : "—";
+  document.getElementById("instSeen").textContent = seenText();
+  const ih = document.getElementById("instHint");
+  ih.innerHTML = injectHintHtml();
+  ih.className = (MOD.state === "noresponse" || MOD.state === "unavailable") ? "hint red" : "hint";
+}
+function renderHero(){
+  const total = ENGINE.instances.length;
+  const done = ENGINE.instances.filter(i=>i.signed).length;
+  const ring = document.getElementById("ring");
+  ring.style.setProperty("--pct", total ? Math.round(done/total*100) : 0);
+  ring.classList.toggle("ok", total>0 && done===total);
+  ring.classList.toggle("run", ENGINE.running);
+  const best = ENGINE.instances.reduce((m,i)=>Math.max(m,i.streak),0);
+  document.getElementById("ringBig").textContent = best ? best : "—";
+  document.getElementById("ringSub").textContent = best ? "天连续" : "连续天数";
+  const title = document.getElementById("heroTitle"), desc = document.getElementById("heroDesc");
+  // 没有实例上报时（刚注入、还没跑过签到）以模块自己上报的状态为准 ——
+  // 否则会出现「首页说尚未签到、槽位却写已跳过」这种自相矛盾
+  const pongSigned = !!(MOD.pong && MOD.pong.signedToday);
+  if(ENGINE.running){
+    title.textContent = "正在签到…";
+    desc.innerHTML = '<span class="mono">Hook 取码 → 换 session → 签到</span>';
+  }else if(total && done===total){
+    title.textContent = "今日已全部签到";
+    desc.innerHTML = `${done}/${total} 个实例完成 · 连续 <span class="streak">${best}</span> 天`;
+  }else if(done>0){
+    title.textContent = "部分实例已签到";
+    desc.textContent = `${done}/${total} 个实例完成`;
+  }else if(pongSigned){
+    const streak = (MOD.pong && MOD.pong.streak) ? MOD.pong.streak : best;
+    title.textContent = "今日已签到";
+    desc.innerHTML = streak
+      ? `连续 <span class="streak">${streak}</span> 天`
+      : "模块上报已完成";
+  }else{
+    title.textContent = "尚未签到";
+    desc.textContent = CFG.enabled ? "等待今日定时任务触发" : "自动签到已关闭";
+  }
+  // 关闭「不再重复」时把后续行为说明白，别让人以为今天结束了
+  if(!dedupeOn() && (signedTodayAll() || pongSigned) && CFG.enabled){
+    desc.textContent += " · 今天剩下的定时点仍会执行";
+  }
+}
+/**
+ * 今天是否已经签到完 —— 所有已知实例都签过才算。
+ * 已知实例为空时退回模块自己上报的状态（单实例场景）。
+ */
+function signedTodayAll(){
+  if(ENGINE.instances.length) return ENGINE.instances.every(i=>i.signed);
+  return !!(MOD.pong && MOD.pong.signedToday);
+}
+
+/** 「当天成功后不再重复」是否开启（默认开） */
+function dedupeOn(){ return CFG.dedupe !== false; }
+
+/**
+ * 今天剩下的定时点是否不用再执行了。
+ *
+ * 这里必须带上 dedupe：关闭「当天成功后不再重复」的意思就是
+ * **今天已签到也继续按定时点执行**（比如想多签几次凑连续天数）。
+ * 早先这个判断只看 signedTodayAll()，于是开关关掉后首页仍然写
+ * 「今日已签到 · 不再执行」、槽位仍然标「已跳过」—— 开关看起来就是个摆设。
+ */
+function skipRestOfDay(){ return dedupeOn() && signedTodayAll(); }
+
+/**
+ * 下一个定点执行时间（每个定时点是 h:01）。
+ *
+ * 规则：
+ *   1. 「当天成功后不再重复」开启且今天已签到完 → 下一次直接是明天第一个定时点
+ *   2. 否则取**严格在未来**的那个；今天没有了才取明天第一个
+ *
+ * 早先这里用「第一个还没标记完成的槽位」，而那个标记只有演示模式才会写，
+ * 真机上永远是空的 —— 于是 next 恒等于 00:01，而今天 00:01 早已过去，
+ * 倒计时被钳到 0，显示成「还有 0 分 0 秒」永远不动。
+ */
+function nextRunAt(){
+  const now = new Date();
+  const tomorrowAt = (reason) => {
+    const t = new Date(now);
+    t.setDate(t.getDate() + 1);
+    t.setHours(SLOTS[0], 1, 0, 0);
+    return { at: t, h: SLOTS[0], tomorrow: true, reason };
+  };
+
+  // 今日签到成功且开关要求不重复 → 今天不再执行，等明天
+  if(skipRestOfDay()) return tomorrowAt("signed");
+
+  for(const h of SLOTS){
+    const t = new Date(now);
+    t.setHours(h, 1, 0, 0);
+    if(t.getTime() > now.getTime()) return { at: t, h, tomorrow: false };
+  }
+  return tomorrowAt("passed");
+}
+
+function slotState(){
+  const now = new Date();
+  const n = nextRunAt();
+  const skip = skipRestOfDay();
+  return SLOTS.map(h=>{
+    const t = new Date(now); t.setHours(h, 1, 0, 0);
+    return {
+      h,
+      passed: t.getTime() <= now.getTime(),
+      signed: skip,
+      isNext: !n.tomorrow && h === n.h
+    };
+  });
+}
+/** 秒级显示，这样倒计时是肉眼可见地在走 */
+function fmtDelta(ms){
+  if(ms < 0) ms = 0;
+  const s = Math.floor(ms/1000), h = Math.floor(s/3600), m = Math.floor(s%3600/60), sec = s%60;
+  return h > 0 ? `${h} 小时 ${m} 分 ${sec} 秒` : `${m} 分 ${sec} 秒`;
+}
+function renderSlots(){
+  const st = slotState();
+  document.getElementById("slots").innerHTML = st.map(s=>`
+    <div class="slot ${s.isNext?"next":""} ${s.signed?"done":""}">
+      <div class="t">${String(s.h).padStart(2,"0")}:01</div>
+      <div class="s">${s.isNext?"下一次":(s.signed?"已跳过":(s.passed?"已过":"待执行"))}</div>
+    </div>`).join("");
+  const el = document.getElementById("nextRunHint");
+  if(!CFG.enabled){ el.textContent = "自动签到已关闭"; return; }
+  const n = nextRunAt();
+  const left = fmtDelta(n.at - new Date());
+  const hh = String(n.h).padStart(2,"0");
+  if(n.reason === "signed"){
+    el.textContent = `今日已签到 · 不再执行，下次还有 ${left}（明天 ${hh}:01）`;
+  }else if(n.tomorrow){
+    el.textContent = `今日定时点已过 · 下次还有 ${left}（明天 ${hh}:01）`;
+  }else{
+    el.textContent = `下次执行 ${hh}:01 · 还有 ${left}`;
+  }
+  // 关闭了「不再重复」时要说清楚：今天还会继续签
+  if(!dedupeOn() && signedTodayAll()){
+    el.textContent += " · 已关闭「当天成功后不再重复」，今天剩下的定时点仍会执行";
+  }
+}
+function renderInstances(){
+  const box = document.getElementById("instList");
+  if(!ENGINE.instances.length){
+    box.innerHTML = MOD.state === "injected"
+      ? '<div class="hint">模块已注入，但还没有实例上报。把微信切到前台再回来，或点上面的「重新检测」。</div>'
+      : '<div class="hint red">没有检测到微信实例 —— 模块没有注入到微信进程。</div>'
+        + '<div class="hint" style="margin-top:9px">'
+        + INJECT_STEPS.map((s, i) => (i + 1) + ". " + esc(s)).join("<br>")
+        + '</div>';
+    return;
+  }
+  const demoNote = MOD.insideApp
+    ? ""
+    : `<div class="hint" style="margin-bottom:9px">以下为演示数据 —— 页面没有运行在 APK 内。</div>`;
+
+  box.innerHTML = demoNote + ENGINE.instances.map((it,i)=>{
+    const tag = it.signed ? '<span class="tag ok">今日已签</span>'
+              : (ENGINE.running ? '<span class="tag wait">进行中</span>' : '<span class="tag">待签</span>');
+    return `<div class="inst">
+      <div class="idx">${String(i+1).padStart(2,"0")}</div>
+      <div class="meta"><b>${esc(it.name)}</b>
+        <span>${esc(it.pkg)} · ${esc(it.user)} · 连续 ${it.streak} 天 · ${esc(it.last)}</span></div>
+      ${tag}</div>`;
+  }).join("");
+}
+function renderSettingsState(){
+  document.getElementById("mailState").textContent = (CFG.mailEnabled && CFG.smtp && CFG.mailTo) ? "已配置" : "未配置";
+  document.getElementById("hookState").textContent = (CFG.hookEnabled && CFG.hookUrl) ? "已配置" : "未配置";
+  syncDom();
+  renderAlarm();
+  renderLogDelivery();
+  // 关于/说明：这些是「实现事实」，写清比留一句空话有用
+  const ah = document.getElementById("aboutHint");
+  if(ah){
+    const p = MOD.pong || {};
+    ah.innerHTML = "模块 v" + esc(p.moduleVersion || "—") + " · 微信 " + esc(p.version || "—")
+      + " · pid " + esc(String(p.pid || "—"))
+      + "<br>签到请求由谁发出：优先由 App 进程（被闹钟唤醒时），否则由微信进程内的模块发出。"
+      + "<br>所有请求只发往比亚迪官方接口与你自己配置的通知地址；配置与日志都只存在本机。";
+  }
+}
+
+/**
+ * 日志投递对账。
+ *
+ * 这是为了回答「为什么日志只在打开 App 时才更新」：
+ * 日志是模块（微信进程里）推到 App 的，而**落盘要由 App 进程做**。
+ * 有些系统（MIUI / HyperOS 之类）不允许广播把没在运行的 App 拉起来，
+ * 于是投递只能等下次打开 App 时用整体快照补回。
+ * 模块每推一批就计数，本机每收到一批也计数，两者越差越多就是被拦了 ——
+ * 这样不用猜，看一眼数字就知道。
+ */
+function renderLogDelivery(){
+  const el = document.getElementById("logDeliveryHint");
+  const b = bridge();
+  if(!b || !b.getLogDelivery){
+    el.style.display = "none";
+    return;
+  }
+  let st = {};
+  try{ st = JSON.parse(b.getLogDelivery() || "{}"); }catch(e){ st = {}; }
+  const pushed = Number(st.pushed || 0), got = Number(st.received || 0);
+  el.style.display = "";
+
+  if(pushed <= 0){
+    el.className = "hint";
+    el.textContent = "模块还没有推送过日志（微信进程刚起来或模块没注入时是这样）。";
+    return;
+  }
+  if(pushed - got <= 2){
+    el.className = "hint";
+    el.textContent = "日志投递正常：模块推了 " + pushed + " 批，本机收到 " + got + " 批。";
+    return;
+  }
+  el.className = "hint red";
+  el.textContent = "模块推过 " + pushed + " 批日志，本机只收到 " + got
+    + " 批 —— 系统在阻止本 App 被后台唤醒，所以自动签到期间的日志只能等打开 App 时整体补回。"
+    + "去系统设置里允许本应用自启动 / 后台运行，日志才会实时落盘。";
+}
+
+/**
+ * App 侧闹钟的状态。
+ *
+ * 这一块是第三层改造的可见面：它在，说明「每个定时点由 App 唤醒一次并发出网请求」
+ * 这条路是通的；它不在（浏览器/演示模式），就按未知显示。
+ */
+function renderAlarm(){
+  const b = bridge();
+  const nextEl = document.getElementById("alarmNext");
+  const exactEl = document.getElementById("alarmExact");
+  const lastEl = document.getElementById("alarmLast");
+  if(!b || !b.getAlarmStatus){
+    nextEl.textContent = "仅 APK 内可用";
+    exactEl.textContent = "—";
+    lastEl.textContent = "—";
+    return;
+  }
+  let st = {};
+  try{ st = JSON.parse(b.getAlarmStatus() || "{}"); }catch(e){ st = {}; }
+  nextEl.textContent = st.next || "未安排";
+  exactEl.textContent = st.exact ? "已授权" : "未授权（也能触发，只是可能晚十几分钟）";
+  exactEl.className = "v " + (st.exact ? "ok" : "warn");
+  lastEl.textContent = st.last || "还没有执行过";
+}
+/** 附加参数的含义随 Webhook 类型变化，避免为每种渠道单独开输入框 */
+const HOOK_EXTRA = {
+  "":       {label:"附加参数",          tip:"当前类型无需填写",       needs:false, channel:false},
+  wechat:   {label:"附加参数",          tip:"当前类型无需填写",       needs:false, channel:false},
+  dingtalk: {label:"钉钉加签密钥",      tip:"机器人安全设置 → 加签", needs:true,  channel:false},
+  telegram: {label:"Telegram Chat ID",  tip:"向 @userinfobot 获取",  needs:true,  channel:false},
+  pushplus: {label:"PushPlus Token",    tip:"pushplus.plus 的 token", needs:true, channel:true },
+  custom:   {label:"附加参数",          tip:"当前类型无需填写",       needs:false, channel:false}
+};
+function updateHookLabels(){
+  const m = HOOK_EXTRA[CFG.hookType] || HOOK_EXTRA[""];
+  document.getElementById("hookExtraLabel").textContent = m.label;
+  document.getElementById("hookExtraTip").textContent = m.tip;
+  document.getElementById("hookExtra").disabled = !m.needs;
+  document.getElementById("hookChannelField").style.display = m.channel ? "" : "none";
+}
+function renderAll(){ renderEngine(); renderHero(); renderSlots(); renderInstances(); renderSettingsState(); }
+
+/* ============================================================
+   8. 签到流程
+   ============================================================ */
+function mockCode(){
+  const a = new Uint8Array(32); crypto.getRandomValues(a);
+  const CH = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let s = ""; for(const b of a) s += CH[b%CH.length];
+  return s;
+}
+/**
+ * 取码前把微信拉到前台并等它就绪（可选，默认关闭）。
+ *
+ * 原 byd_sign 的 lib.sh 里记录了「微信进程存在但后台休眠，导致 get_code 服务无响应」，
+ * 解法是 am startservice + am start（需要 root）。模块在微信进程内做不到后台启动
+ * Activity，所以这一步只能由处于前台的 App 做。
+ *
+ * 取码链路修好后默认不需要它了，只在取码持续无响应时才打开这个开关。
+ */
+function wakeWechatThenLog(){
+  const b = bridge();
+  if(!b || !b.bringWechatToFront) return Promise.resolve(false);
+  log("INFO", "正在把微信切到前台 —— 后台状态下微信的登录流程可能不会执行");
+  let ok = false;
+  try{ ok = !!b.bringWechatToFront(); }catch(e){ ok = false; }
+  log(ok ? "INFO" : "WARN", ok
+    ? "已切到微信，等 2 秒再发起取码"
+    : "切换前台失败（可能被系统拦截），仍继续取码");
+  return new Promise(r => setTimeout(()=>r(ok), 2000));
+}
+async function runSign(opts){
+  opts = opts || {};
+  const all = opts.all !== false;
+  if(ENGINE.running){ toast("已有任务在执行","err"); return; }
+
+  /* ---- 模块已注入：指令直接交给微信进程 ----
+     模块自己知道当前登录的是哪个微信号，不需要 App 侧先有实例列表。
+     早先这里先判断本地 instances 是否为空，结果列表还没刷新出来时
+     就报「没有可签到的实例」，把真正该做的事挡在了前面。 */
+  if(MOD.insideApp){
+    if(MOD.state !== "injected"){
+      toast("模块当前没应答，指令可能送不到", "err");
+      log("ERR", "模块没应答，指令送不到 —— 页面会每 30 秒自动重试；也可先打开一次微信再点「重新检测」");
+      detectInjection();
+      return;
+    }
+    /* 「当天成功后不再重复」开着，而今天已经签过了 —— 手动按钮也按这个开关走。
+       之前手动签到是刻意绕过它的（「触发后立即执行」），结果开关看起来毫无作用：
+       点了照样又签一次。要重复签，先把设置里那个开关关掉。 */
+    if(dedupeOn() && MOD.pong && MOD.pong.signedToday){
+      toast("今日已签到，已按开关跳过", "err");
+      log("WARN", "今日已签到 · 「当天成功后不再重复」开启中，本次手动签到已跳过"
+        + "（要重复签到请先在设置里关掉该开关）");
+      return;
+    }
+    ENGINE.running = true; ENGINE.stopped = false;
+    renderAll();
+    if(CFG.wakeBeforeCode) await wakeWechatThenLog();
+    pushCommand("signNow", all ? "all" : opts.id);
+    log("INFO", "已向模块下发签到指令，等待微信进程回写日志…");
+    setTimeout(()=>{ ENGINE.running = false; renderAll(); }, 1500);
+    return;
+  }
+
+  /* ---- 浏览器 / 模拟器演示模式：本地模拟，需要实例列表 ---- */
+  const targets = all ? ENGINE.instances : ENGINE.instances.filter(i=>i.id===opts.id);
+  if(!targets.length){ toast("没有可签到的实例","err"); return; }
+  ENGINE.running = true; ENGINE.stopped = false;
+  renderAll();
+  log("INFO", `== 比亚迪${all?"手动":"单实例"}签到开始（${targets.length} 个实例）`);
+  await demoFlow(targets);
+  ENGINE.running = false;
+  renderAll();
+}
+function stage(text, ms){ log("INFO","→ "+text); return new Promise(r=>setTimeout(r, ms)); }
+async function demoFlow(targets){
+  for(const it of targets){
+    if(ENGINE.stopped){ log("WARN","任务已被用户停止"); return; }
+    log("INFO", `== [${it.name} / ${it.user}] 开始签到 ==`);
+    await stage("唤醒微信（解除 Doze / App Standby 限制 + CoreService）", 560);
+    const code = mockCode();
+    log("OK", `[${it.name}] Hook 取得 code：${code.slice(0,10)}…（进程内直取，未经过本地端口）`);
+    const r1 = buildRequest("session", {code});
+    log("INFO", `[${it.name}] X-Clienttraceid=${r1.traceId}`);
+    log("INFO", `[${it.name}] nonce=${r1.nonce} curtime=${r1.curtime}`);
+    log("INFO", `[${it.name}] checksum=${r1.checksum}`);
+    log("INFO", `[${it.name}] AES-128-CBC 密文 ${r1.body.length} 字节 · hex ${r1.cipherHex.slice(0,32)}…`);
+    await stage(`POST ${r1.url}`, 720);
+    const sid = mockCode().slice(0,24);
+    log("OK", `[${it.name}] 响应解密得到 session_id：${sid.slice(0,10)}…`);
+    const r2 = buildRequest("sign", {date:"", belong_brand:CFG.brand, session_id:sid, app_version:PROTO.VERSION, app_client:PROTO.CLIENT});
+    log("INFO", `[${it.name}] 签到明文：${r2.plain}`);
+    await stage("POST activity/sign/signIn", 760);
+    if(Math.random() < 0.15){
+      it.last = "失败";
+      log("ERR", `[${it.name}] 签到失败：服务端返回 ret=500`);
+      toast(it.name + " 签到失败", "err");
+    }else{
+      const d = new Date();
+      it.streak += 1; it.signed = true;
+      it.last = "成功 " + String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+      ENGINE.last = it.last;
+      log("OK", `[${it.name}] 签到成功！已连续签到 ${it.streak} 天`);
+      toast(`${it.name} 签到成功 · 连续 ${it.streak} 天`, "ok");
+    }
+    renderAll();
+  }
+  const ok = targets.filter(t=>t.signed).length;
+  log(ok?"OK":"WARN", `== 汇总：成功 ${ok} / 共 ${targets.length} 个实例 ==`);
+}
+
+/* ============================================================
+   9. 配置页：微信版本适配 + 配置文件读写
+   ============================================================ */
+const VER_FAIL_TEXT = "当前版本获取配置失败，请手动打开配置更新";
+let VER = {version:"", exact:false, state:"idle", note:"", reason:"", steps:"", versions:[], effective:null};
+let probeRequested = false;
+/** 上次发起探测的时间：用来判断「探测中」是不是卡住了 */
+let probeAt = 0;
+/** 超过这么久还没结果就按失败显示，别让界面永远停在「探测中」 */
+const PROBE_STUCK_MS = 25000;
+/** 向模块索取版本表的节流：同一个版本 60 秒内只拉一次 */
+let verTablePullAt = 0, verTablePulledFor = "";
+
+/** 拉取版本适配状态；未收录时自动请求一次模块探测 */
+function refreshVersion(){
+  const b = bridge();
+  if(!b || !b.getVersionStatus){
+    renderVersion({version:ENGINE.version, exact:false, state:"idle",
+      note:"未连接模块（演示模式），无法读取版本适配状态", versions:[]});
+    return;
+  }
+  try{
+    VER = Object.assign(VER, JSON.parse(b.getVersionStatus() || "{}"));
+  }catch(e){
+    VER = Object.assign(VER, {exact:false, state:"failed", reason:"状态解析失败: " + e.message});
+  }
+  // 发起过探测但迟迟没有结果时，别让界面永远停在「探测中」：
+  // 模块的回复可能根本没到（没注入 / 微信进程没在跑 / 这一版把它判成「已收录」却不回话）。
+  if(VER.state === "running" && probeAt && Date.now() - probeAt > PROBE_STUCK_MS){
+    VER = Object.assign(VER, {state:"failed",
+      reason:"等了 " + Math.round(PROBE_STUCK_MS/1000) + " 秒没收到模块的探测结果。"
+        + "可能是：模块没注入（首页看握手状态）、微信进程没在运行、或模块判定当前版本已收录而未回报。"
+        + "日志页能看到模块侧到底做了什么。"});
+  }
+  renderVersion(VER);
+
+  /* 模块那边已经收录、但**控制台这份配置里还没有这个版本** —— 主动拉一份过来落盘。
+     模块探测成功时本来会主动推，但那个时机是微信刚启动、App 常常不在，
+     国产 ROM 又会拦后台启动，广播就丢了：于是模块侧一切正常（取码用的是对的类），
+     控制台却一直没有这个版本（配置文件里看不到、配置页也看不到）。
+     这里只在「模块有、本机没有」时拉一次，同一个版本 60 秒内不重复拉。 */
+  if(VER.exact && VER.version){
+    const ov = (VER.override && VER.override.versions) ? VER.override.versions : {};
+    if(!ov[VER.version] && verTablePulledFor !== VER.version
+       && Date.now() - verTablePullAt > 60000){
+      verTablePullAt = Date.now();
+      verTablePulledFor = VER.version;
+      const bb = bridge();
+      if(bb && bb.requestVersionTable){
+        bb.requestVersionTable();
+        log("INFO", "模块已收录微信 " + VER.version + "，但控制台配置里还没有它 —— 已向模块索取完整版本表");
+      }
+    }
+  }
+
+  // 只有开启「自动解析 dex」、版本表没收录、且这个版本还没请求过时才要一次
+  if(CFG.autoProbe && !VER.exact && !probeRequested
+     && VER.state !== "failed" && !probeRequestedFor(VER.version)){
+    probeRequested = true;
+    probeAt = Date.now();
+    markProbeRequested(VER.version);
+    if(b.probeVersion) b.probeVersion();
+  }
+}
+
+function renderVersion(v){
+  const ver = v.version || ENGINE.version || "—";
+  document.getElementById("cfgVer").textContent = ver;
+
+  const stateEl = document.getElementById("cfgVerState");
+  const hintEl  = document.getElementById("cfgVerHint");
+  const engEl   = document.getElementById("engVerState");
+  const warnEl  = document.getElementById("engVerWarn");
+
+  if(v.exact){
+    stateEl.textContent = "已收录";   stateEl.className = "v ok";
+    engEl.textContent   = "已收录";   engEl.className   = "v ok";
+    hintEl.textContent  = v.note || "该版本已有适配配置，可直接使用";
+    hintEl.className    = "hint";
+    warnEl.style.display = "none";
+  }else if(v.state === "running"){
+    stateEl.textContent = "探测中…";  stateEl.className = "v warn";
+    engEl.textContent   = "探测中";   engEl.className   = "v warn";
+    hintEl.textContent  = "正在解析微信 dex，按 a1 / a7 / c / j1 规则生成适配配置…";
+    hintEl.className    = "hint";
+    warnEl.style.display = "none";
+  }else if(v.state === "failed"){
+    stateEl.textContent = "获取失败";  stateEl.className = "v err";
+    engEl.textContent   = "获取失败";  engEl.className   = "v err";
+    hintEl.textContent  = v.reason || VER_FAIL_TEXT;
+    hintEl.className    = "hint red";
+    warnEl.textContent  = VER_FAIL_TEXT;
+    warnEl.style.display = "";
+  }else{
+    stateEl.textContent = "未收录";   stateEl.className = "v warn";
+    engEl.textContent   = "未收录";   engEl.className   = "v warn";
+    hintEl.textContent  = CFG.autoProbe
+      ? "未收录；已开启自动解析，模块会分析本机 dex 生成配置"
+      : "未收录；当前完全按版本表就近匹配（自动解析 dex 已关闭）";
+    hintEl.className    = "hint";
+    warnEl.style.display = "none";
+  }
+
+  document.getElementById("cfgSteps").textContent =
+    v.steps || v.reason || "暂无探测记录";
+
+  renderBuiltinList(v, ver);
+
+  document.getElementById("cfgTable").textContent =
+    v.effective ? JSON.stringify(v.effective, null, 2) : "—";
+}
+
+/** 版本号比较（"8.0.9" 要排在 "8.0.10" 前面） */
+function cmpVer(a, b){
+  const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number);
+  for(let i=0;i<Math.max(x.length,y.length);i++){
+    const xi = x[i]||0, yi = y[i]||0;
+    if(xi !== yi) return xi - yi;
+  }
+  return 0;
+}
+
+/**
+ * 列出内置表里的每个版本及其来源。
+ * 用途是能直接核对「参考仓库里已有的版本配置是不是都内置了」，
+ * 不用去翻 APK 里的 JSON。
+ */
+/**
+ * 「当前支持版本」列表：一行 3 个，只显示微信版本号。
+ *
+ * 用**生效表**（内置 ⊕ 覆盖层）而不是只列内置 ——
+ * 本机探测出来的版本也属于「这个项目支持哪些版本」，之前只列内置，
+ * 于是探测成功之后列表里看不到那个版本，看起来像没生效。
+ * 探测/覆盖来的版本用虚线边框 + 悬浮说明区分，当前微信版本高亮。
+ */
+function renderBuiltinList(v, currentVer){
+  const builtin = (v.builtin && v.builtin.versions) ? v.builtin.versions : {};
+  const eff = (v.effective && v.effective.versions) ? v.effective.versions : {};
+  const builtinNames = Object.keys(builtin).sort(cmpVer);
+  const names = Object.keys(eff).sort(cmpVer);
+
+  const summary = document.getElementById("cfgVersSummary");
+  if(!names.length){
+    summary.textContent = "没读到版本表（资源缺失？）";
+    summary.className = "hint red";
+  }else{
+    const extra = names.length - builtinNames.length;
+    summary.textContent = "共 " + names.length + " 个版本 · "
+      + names[0] + " ~ " + names[names.length-1]
+      + "（内置 " + builtinNames.length + " 个"
+      + (extra > 0 ? " + 本机探测 " + extra + " 个" : "") + "）"
+      + (currentVer ? " · 当前微信 " + currentVer : "");
+    summary.className = "hint";
+  }
+
+  const box = document.getElementById("cfgVersions");
+  box.className = "vergrid";        // 一行 3 个（样式在 CSS 里，这里保证渲染时就带上）
+  if(!names.length){ box.innerHTML = "—"; return; }
+  box.innerHTML = names.map(x => {
+    const fromBuiltin = !!builtin[x];
+    const isCur = (x === currentVer);
+    const src = fromBuiltin
+      ? (builtin[x]._src ? ("内置表：" + builtin[x]._src) : "内置表")
+      : "本机探测生成（覆盖层）";
+    const cls = ["verchip", isCur ? "cur" : "", fromBuiltin ? "" : "probe"].filter(Boolean).join(" ");
+    return `<div class="${cls}" title="${esc(x + " · " + src)}">${esc(x)}
+      ${isCur ? '<span class="verdot"></span>' : ""}</div>`;
+  }).join("");
+}
+
+/** 载入配置文件到编辑框 */
+function loadConfigText(){
+  const b = bridge();
+  const ta = document.getElementById("cfgText");
+  const line = document.getElementById("cfgStatusLine");
+  const pathEl = document.getElementById("cfgFilePath");
+  if(b && b.getConfigFilePath){
+    try{ pathEl.textContent = "文件：" + b.getConfigFilePath(); }catch(e){ pathEl.textContent = "—"; }
+  }
+  if(!b || !b.getConfigText){
+    ta.value = JSON.stringify(CFG, null, 2);
+    line.textContent = "演示模式：显示本地配置（未连接模块）";
+    return;
+  }
+  try{
+    ta.value = b.getConfigText();
+    line.textContent = "已加载 · " + ta.value.length + " 字符";
+  }catch(e){
+    line.textContent = "读取失败：" + e.message;
+  }
+}
+
+/** 保存编辑框里的配置：校验 → 本地落盘 → 推给微信进程热生效 */
+function saveConfigText(){
+  const b = bridge();
+  const ta = document.getElementById("cfgText");
+  const hint = document.getElementById("cfgSaveHint");
+  const text = ta.value.trim();
+  if(!text){ toast("配置为空","err"); return; }
+
+  let parsed;
+  try{ parsed = JSON.parse(text); }
+  catch(e){
+    hint.textContent = "JSON 格式错误：" + e.message;
+    hint.className = "hint red";
+    toast("JSON 格式错误","err");
+    return;
+  }
+
+  if(b && b.saveConfigText){
+    const r = String(b.saveConfigText(text));
+    if(r !== "OK"){
+      hint.textContent = r;
+      hint.className = "hint red";
+      toast("保存失败","err");
+      log("ERR","配置保存失败：" + r);
+      return;
+    }
+    log("OK","配置文件已保存并推送到微信进程");
+  }else{
+    log("OK","配置已保存到本地（演示模式）");
+  }
+  hint.textContent = (b && b.saveConfigText) ? "已保存并推送给微信进程" : "已保存到本地（演示模式）";
+  hint.className = "hint";
+  toast("保存成功","ok");
+
+  // App 侧独有、模块不认识的键（例如 wakeBeforeCode）在保存链路里可能被丢掉，
+  // 这里显式补回去 —— 否则「改了的设置像没保存」就是这么来的
+  Object.keys(DEFAULT_CFG).forEach(k=>{
+    if(!(k in parsed) && (k in CFG)) parsed[k] = CFG[k];
+  });
+  CFG = Object.assign({}, DEFAULT_CFG, parsed);
+  LOCAL_HAS_CFG = true;
+  localStorage.setItem(LS_KEY, JSON.stringify(CFG));
+  syncDom();
+  refreshVersion();
+  // 立刻向模块核对一次，确认这份配置真的写进去了
+  setTimeout(requestModuleConfig, 900);
+}
+
+/** 请求模块重新解析本机微信 dex */
+function probeVersion(){
+  const b = bridge();
+  if(!b || !b.probeVersion){ toast("未连接模块，无法探测","err"); return; }
+  probeRequested = true;
+  probeAt = Date.now();
+  b.probeVersion();
+  toast("已请求模块探测","ok");
+  log("INFO","已请求模块解析本机微信 dex，生成版本适配配置");
+  setTimeout(refreshVersion, 1500);
+  // 再补两次刷新：探测要扫全包 dex，慢的时候一次不够，
+  // 但也不会一直等 —— 超过 PROBE_STUCK_MS 会按失败给出原因
+  setTimeout(refreshVersion, 6000);
+  setTimeout(refreshVersion, PROBE_STUCK_MS + 1000);
+}
+
+/** 清空覆盖层，回到内置版本表 */
+function resetVersionTable(){
+  const b = bridge();
+  const hint = document.getElementById("cfgSaveHint");
+  if(!b || !b.resetVersionTable){ toast("未连接模块","err"); return; }
+  b.resetVersionTable();
+  probeRequested = false;
+  hint.textContent = "已清空覆盖层，恢复内置版本表";
+  hint.className = "hint";
+  toast("已恢复内置表","ok");
+  log("WARN","版本表覆盖层已清空，回到内置表");
+  setTimeout(()=>{ loadConfigText(); refreshVersion(); }, 700);
+}
+
+
+/* ============================================================
+   9b. 模块侧实际生效配置
+   ============================================================ */
+
+/* ---------- 模块侧实际生效配置 ---------- */
+let mcRequestedAt = 0, mcPollUntil = 0;
+
+function requestModuleConfig(){
+  const b = bridge();
+  if(!b){ toast("未在 APK 内运行","err"); return; }
+  if(MOD.state !== "injected"){ toast("模块当前没应答，索取不到","err"); detectInjection(); return; }
+  if(!b.requestModuleConfig){ toast("当前 App 版本不支持","err"); return; }
+  mcRequestedAt = Date.now();
+  mcPollUntil = mcRequestedAt + 6000;
+  const hint = document.getElementById("mcHint");
+  hint.textContent = "正在向模块索取当前生效配置…";
+  hint.className = "hint";
+  b.requestModuleConfig();
+  setTimeout(pollModuleConfig, 500);
+}
+
+function pollModuleConfig(){
+  const b = bridge();
+  let st = {};
+  try{ st = JSON.parse((b && b.getModuleConfig) ? b.getModuleConfig() : "{}"); }catch(e){ st = {}; }
+  if(st.at && st.at >= mcRequestedAt){ renderModuleConfig(st); return; }
+  if(Date.now() < mcPollUntil){ setTimeout(pollModuleConfig, 400); return; }
+  const hint = document.getElementById("mcHint");
+  hint.textContent = "没有收到模块回复 —— 模块可能没注入，或微信进程没在运行。";
+  hint.className = "hint red";
+}
+
+function renderModuleConfig(st){
+  const hint = document.getElementById("mcHint");
+  const ver = (MOD.pong && MOD.pong.moduleVersion) ? MOD.pong.moduleVersion : "?";
+  hint.textContent = "模块 v" + ver + " · 微信 " + (st.version || "?") + "（" + (st.edition || "?") + "）"
+    + " · " + (st.exact ? "版本表精确命中" : "未精确命中，就近匹配")
+    + " · 版本表 " + ((st.tableVersions || []).length) + " 个版本";
+  hint.className = "hint";
+
+  const lt = st.loginTask || {};
+  const rt = st.runtime || {};
+  const yn = v => v ? "开" : "关";
+  const mail = rt.mailEnabled ? (rt.mailUsable ? "开（配置完整）" : "开（缺服务器/收发件/授权码，实际不会发）") : "关";
+  const hook = rt.hookEnabled
+    ? (rt.webhookUsable ? "开（" + (rt.hookType || "?") + "）" : "开（缺类型/地址，实际不会发）")
+    : "关";
+  document.getElementById("mcBody").textContent = [
+    "j1          = " + (st.j1 || "—"),
+    "j1 静态方法 = " + (st.j1StaticMethod || "—") + "()",
+    "j1 实例方法 = " + (st.j1InstanceMethod || "—") + "(c)",
+    "c           = " + (st.c || "—"),
+    "a1          = " + (st.a1 || "—"),
+    "a7          = " + (st.a7 || "—"),
+    "来源        = " + (st.sourceNote || "—"),
+    "",
+    "LoginTask 字段映射",
+    "  action=" + lt.action + "  appId=" + lt.appId + "  s=" + lt.s + "  v=" + lt.v,
+    "  t=" + lt.t + "  u=" + lt.u + "  A=" + lt.A,
+    "  state=" + lt.state + "（读）  code=" + lt.code + "（读）",
+    "",
+    "运行时开关（模块侧真实取值，不是你界面上的）",
+    "  自动签到=" + yn(rt.enabled) + " · 当天成功后不再重复=" + yn(rt.dedupe)
+      + " · 自动解析 dex=" + yn(rt.autoProbe),
+    "  重试 " + rt.retry + " 次 / 间隔 " + rt.interval + "s · 取码上限 " + rt.codeTimeout + "s"
+      + " · 日志保留 " + rt.keep + " 天",
+    "  邮件通知=" + mail,
+    "  Webhook=" + hook,
+    "  成功时通知=" + yn(rt.notifySuccess) + " · 失败时通知=" + yn(rt.notifyFailure)
+  ].join("\n");
+
+  log("INFO", "模块侧实际生效：j1=" + st.j1 + " c=" + st.c + " a1=" + st.a1 + " a7=" + st.a7
+      + " · " + st.j1StaticMethod + "()/" + st.j1InstanceMethod + "()");
+}
+
+
+/* ============================================================
+   10. 设置绑定
+   ============================================================ */
+function syncDom(){
+  document.querySelectorAll(".toggle[data-k]").forEach(t=>t.classList.toggle("on", !!CFG[t.dataset.k]));
+  const set = (id,v)=>{ const el=document.getElementById(id); if(el) el.value = v; };
+  set("retry", CFG.retry);       document.getElementById("retryTip").textContent = "共 " + CFG.retry + " 次";
+  set("interval", CFG.interval); document.getElementById("intervalTip").textContent = CFG.interval + " 秒";
+  set("codeTimeout", CFG.codeTimeout); document.getElementById("codeTimeoutTip").textContent = CFG.codeTimeout + " 秒";
+  set("keep", CFG.keep);         document.getElementById("keepTip").textContent = CFG.keep + " 天";
+  // 品牌与 AppID 固定为海洋网，只读展示
+  document.getElementById("appidFixed").textContent = PROTO.APPID;
+  set("smtp", CFG.smtp); set("mailFrom", CFG.mailFrom); set("mailTo", CFG.mailTo); set("mailAuth", CFG.mailAuth);
+  set("hookType", CFG.hookType); set("hookUrl", CFG.hookUrl);
+  set("hookExtra", CFG.hookExtra); set("hookChannel", CFG.hookChannel);
+  updateHookLabels();
+}
+function bindSettings(){
+  document.querySelectorAll(".toggle[data-k]").forEach(t=>{
+    t.addEventListener("click", ()=>{
+      const k = t.dataset.k;
+      CFG[k] = !CFG[k];
+      saveCfg();
+      log("INFO", "配置变更：" + k + " = " + CFG[k]);
+      // 关掉「自动解析 dex」时，把之前探测生成的覆盖项一并清掉 ——
+      // 否则那些动态解析出来的类名会继续盖住内置版本表
+      if(k === "autoProbe" && !CFG.autoProbe){
+        const bb = bridge();
+        if(bb && bb.resetVersionTable){
+          bb.resetVersionTable();
+          CFG.versionTable = null;
+          localStorage.setItem(LS_KEY, JSON.stringify(CFG));
+          log("WARN", "已清空探测生成的覆盖项，回到内置版本表");
+          toast("已回到内置版本表", "ok");
+          setTimeout(()=>{ loadConfigText(); refreshVersion(); }, 600);
+        }
+      }
+      renderSettingsState(); renderSlots(); renderHero();
+    });
+  });
+  const bindRange = (id, tipId, unit, key, prefix)=>{
+    const el = document.getElementById(id);
+    el.addEventListener("input", ()=>{
+      CFG[key] = Number(el.value);
+      document.getElementById(tipId).textContent = (prefix || "") + el.value + " " + unit;
+      saveCfg();
+    });
+  };
+  bindRange("retry","retryTip","次","retry","共 ");
+  bindRange("interval","intervalTip","秒","interval");
+  bindRange("codeTimeout","codeTimeoutTip","秒","codeTimeout");
+  bindRange("keep","keepTip","天","keep");
+  const bindInput = (id, key, refresh)=>{
+    document.getElementById(id).addEventListener("change", e=>{
+      CFG[key] = e.target.value.trim();
+      saveCfg();
+      if(refresh) renderSettingsState();
+      // 编辑框有变动即给出保存反馈（change 事件在失焦时触发，不会边打字边弹）
+      toast("保存成功","ok");
+    });
+  };
+  ["smtp","mailFrom","mailTo","mailAuth","hookExtra","hookChannel"].forEach(id=>bindInput(id, id, false));
+  bindInput("hookType", "hookType", true);
+  bindInput("hookUrl", "hookUrl", true);
+  document.getElementById("hookType").addEventListener("change", renderSettingsState);
+}
+
+/* ============================================================
+   11. 导航 / Toast / 初始化
+   ============================================================ */
+const TABS = [
+  {id:"home", label:"首页", icon:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>'},
+  {id:"inst", label:"实例", icon:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/><circle cx="7" cy="6.5" r=".9" fill="currentColor" stroke="none"/>'},
+  {id:"log",  label:"日志", icon:'<path d="M5 3.5h14v17H5z"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>'},
+  {id:"cfg",  label:"配置", icon:'<path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M18 17h2"/><circle cx="15" cy="7" r="1.9"/><circle cx="9" cy="12" r="1.9"/><circle cx="16" cy="17" r="1.9"/>'},
+  {id:"set",  label:"设置", icon:'<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M4.6 7.4l2 1.2M17.4 15.4l2 1.2M4.6 16.6l2-1.2M17.4 8.6l2-1.2"/>'}
+];
+function buildNav(){
+  document.getElementById("nav").innerHTML = TABS.map((t,i)=>
+    `<button data-tab="${t.id}" class="${i===0?"on":""}"><svg viewBox="0 0 24 24">${t.icon}</svg><span>${t.label}</span></button>`).join("");
+  document.querySelectorAll("#nav button").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      document.querySelectorAll("#nav button").forEach(x=>x.classList.remove("on"));
+      document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      document.getElementById("v-" + b.dataset.tab).classList.add("on");
+
+      window.scrollTo({top:0, behavior:"smooth"});
+    });
+  });
+}
+let toastTimer = null;
+function toast(msg, kind){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = "on " + (kind || "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.className = kind || ""; }, 2200);
+}
+function buildLogFilters(){
+  const kinds = ["ALL","OK","INFO","WARN","ERR"];
+  document.getElementById("logFilters").innerHTML = kinds.map(k=>
+    `<button class="chip ${k===logFilter?"on":""}" data-f="${k}">${k==="ALL"?"全部":k}</button>`).join("");
+  document.querySelectorAll("#logFilters .chip").forEach(c=>{
+    c.addEventListener("click", ()=>{
+      logFilter = c.dataset.f;
+      document.querySelectorAll("#logFilters .chip").forEach(x=>x.classList.toggle("on", x===c));
+      renderLogs();
+    });
+  });
+}
+function buildMaintenance(){
+  document.getElementById("btnReset").addEventListener("click", ()=>{
+    CFG = Object.assign({}, DEFAULT_CFG);
+    saveCfg(); syncDom(); renderAll();
+    log("WARN","配置已恢复默认");
+    toast("已恢复默认配置","ok");
+  });
+}
+function bindActions(){
+  document.getElementById("btnSignNow").addEventListener("click", ()=>runSign({all:true}));
+  document.getElementById("btnStop").addEventListener("click", ()=>{
+    ENGINE.stopped = true; ENGINE.running = false;
+    pushCommand("stop");
+    log("WARN","已请求停止当前任务");
+    renderAll();
+  });
+  document.getElementById("btnCfgReload").addEventListener("click", ()=>{
+    loadConfigText(); refreshVersion(); toast("已重新加载","ok");
+  });
+  document.getElementById("btnCfgSave").addEventListener("click", saveConfigText);
+  document.getElementById("btnCfgFromFile").addEventListener("click", ()=>{
+    const b = bridge();
+    if(!b || !b.reloadFromConfigFile){ toast("未连接模块","err"); return; }
+    const r = String(b.reloadFromConfigFile());
+    if(r !== "OK"){ toast(r, "err"); log("ERR", "从文件加载失败：" + r); return; }
+    toast("已从文件加载并生效","ok");
+    log("OK", "已从配置文件重新加载");
+    loadConfigText(); refreshVersion(); setTimeout(requestModuleConfig, 900);
+  });
+  document.getElementById("btnProbe").addEventListener("click", probeVersion);
+  document.getElementById("btnResetVer").addEventListener("click", resetVersionTable);
+  document.getElementById("btnRecheck").addEventListener("click", ()=>{
+    detectInjection();
+    toast("已重新检测","ok");
+  });
+
+  document.getElementById("btnModuleCfg").addEventListener("click", ()=>{
+    requestModuleConfig();
+    toast("已索取模块配置","ok");
+  });
+  document.getElementById("btnExactAlarm").addEventListener("click", ()=>{
+    const b = bridge();
+    if(!b || !b.requestExactAlarm){ toast("仅在 APK 内可用","err"); return; }
+    let ok = false;
+    try{ ok = !!b.requestExactAlarm(); }catch(e){ ok = false; }
+    toast(ok ? "已打开系统设置，请允许「闹钟和提醒」" : "系统没有这个设置页（Android 12 以下不需要授权）",
+          ok ? "ok" : "err");
+    setTimeout(renderAlarm, 1200);
+  });
+  document.getElementById("btnLogRefresh").addEventListener("click", ()=>{
+    // 先让模块把内存里的日志重推一遍，再拉取本地文件，
+    // 这样 App 不在前台时错过的那几条也能补回来
+    const b = bridge();
+    if(b && b.requestLogs) b.requestLogs();
+    setTimeout(()=>{ tick(true); toast("已刷新","ok"); }, 700);
+  });
+  document.getElementById("btnLogCopy").addEventListener("click", async ()=>{
+    const text = visibleLogs().map(l=>`${l.ts} ${l.level} ${l.msg}`).join("\n");
+    try{ await navigator.clipboard.writeText(text); toast("日志已复制","ok"); }
+    catch{ toast("复制失败，请长按选择文本","err"); }
+  });
+  document.getElementById("btnLogClear").addEventListener("click", ()=>{
+    LOGS.length = 0; renderLogs();
+    pushCommand("clearLogs");
+    toast("日志已清空","ok");
+  });
+}
+function tick(force){
+  const bridged = pullFromModule();
+  if(bridged){
+    const b = bridge();
+    try{
+      const raw = b.getLogs ? JSON.parse(b.getLogs() || "[]") : [];
+      if(raw.length){
+        LOGS.length = 0;
+        raw.slice(-300).forEach(x=>LOGS.push({ts:x.ts||"", level:x.level||"INFO", msg:x.msg||""}));
+        renderLogs();
+      }
+      if(b.isRunning) ENGINE.running = !!b.isRunning();
+    }catch(e){ /* 单次读取失败忽略，下一轮重试 */ }
+    refreshVersion();
+  }else if(!ENGINE.instances.length){
+    ENGINE.instances = DEMO_INSTANCES.map(x=>Object.assign({}, x));
+    ENGINE.version = "8.0.74";
+  }
+  if(force) renderAll();
+  else { renderEngine(); renderHero(); renderSlots(); }
+
+  // 握手没成功时的自愈：只在「异常状态」下重试，正常时一次广播都不发。
+  // 之前这种误报只能靠用户自己切页面触发重新检测。
+  if(MOD.insideApp && MOD.state === "noresponse"
+     && Date.now() - lastDetectAt > PING_RECHECK_MS){
+    detectInjection();
+  }
+}
+function init(){
+  buildNav(); buildLogFilters(); bindSettings(); buildMaintenance(); bindActions();
+  log("INFO","控制台已启动 · AES-128-CBC / SHA-256 内核就绪");
+  log(bridge() ? "INFO" : "WARN", bridge()
+    ? "页面运行在 APK 内，正在握手检测模块注入状态…"
+    : "未在 APK 内运行，进入演示模式（加密与请求构造为真实实现）");
+  renderAll();
+  pushToModule();   // 页面加载即把当前配置同步给模块
+  loadConfigText();
+  refreshVersion();
+  tick(true);
+  detectInjection();                                  // 握手判断 LSPosed 是否真的生效
+  setInterval(()=>tick(false), 5000);
+  setInterval(renderSlots, 1000);
+  // 「还有 X 分」这种相对时间要自己走，但只在设置页可见时才去问原生层
+  setInterval(()=>{
+    const v = document.getElementById("v-set");
+    if(v && v.classList && v.classList.contains("on")) renderAlarm();
+  }, 1000);
+
+}
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>

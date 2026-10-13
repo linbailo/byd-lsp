@@ -1,0 +1,155 @@
+/*
+ * BYD 自动签到 —— LSPosed 模块
+ *
+ * 合并说明：
+ *   原 byd_sign（KernelSU/Magisk shell 模块）与 wxcode（LSPosed 取码模块）
+ *   合并为单一 LSPosed 模块。取 code 不再经过 127.0.0.1:8088 之类本地端口，
+ *   而是在微信进程内直接调用签到引擎；定时、重试、通知也全部在模块内完成，
+ *   不再依赖 crond / curl / openssl 二进制。
+ */
+plugins {
+    id 'com.android.application'
+}
+
+/*
+ * release 签名：密钥信息放在同级的 keystore.properties 里。
+ * 文件缺失时 release 变体会以未签名方式构建（装不上），
+ * 所以 CI 与本地都应该保留 keystore.properties 和 .jks。
+ */
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
+android {
+    namespace 'xiaojw.byd'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'xiaojw.byd'
+        minSdk 26
+        targetSdk 34
+        versionCode 27
+        versionName '1.20.6'
+    }
+
+    signingConfigs {
+        if (keystorePropsFile.exists()) {
+            release {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    // ⚠ Xposed 模块必须单 dex。AGP 在 debug 变体下会按包把工程类拆成多个 dex
+    //   （增量构建优化），而模块加载器通常只读 classes.dex，结果就是
+    //   「LSPosed 里勾选了但没注入」。release 变体会合并成单个 classes.dex，
+    //   所以正式版必须用 release —— build-apk 脚本对其有自动检查。
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            minifyEnabled false
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // 仓库根目录的 index.html 就是控制台 App，构建时复制进 assets/webui/
+    def webuiSrc = rootProject.file('../index.html')
+    sourceSets {
+        main {
+            assets.srcDir(layout.buildDirectory.dir('generated/webui'))
+        }
+    }
+    tasks.register('syncWebui', Copy) {
+        onlyIf { webuiSrc.exists() }
+        from(webuiSrc)
+        into layout.buildDirectory.dir('generated/webui/webui')
+    }
+
+    // 版本表：assets 里的 JSON 是唯一来源，构建时把它编译成 Java 常量。
+    // 模块跑在微信进程里，用微信的 Context 读不到我们自己的 assets
+    // （getAssets() 指向宿主 APK），所以不能在运行时读资源。
+    sourceSets {
+        main {
+            java.srcDir layout.buildDirectory.dir('generated/bydtable')
+        }
+    }
+    tasks.register('generateVersionTableDefault') {
+        def src = file('src/main/assets/wxcode_versions.json')
+        def outDir = layout.buildDirectory.dir('generated/bydtable').get().asFile
+        def outFile = new File(outDir, 'xiaojw/byd/hook/WxVersionTableDefault.java')
+        inputs.file(src)
+        outputs.file(outFile)
+        doLast {
+            if (!src.exists()) {
+                throw new GradleException("缺少版本表源文件: ${src}")
+            }
+            def json = src.getText('UTF-8')
+            def esc = json.replace('\\', '\\\\').replace('"', '\\"')
+                          .replace('\r', '').replace('\n', '\\n')
+            outFile.parentFile.mkdirs()
+            outFile.setText(
+                    'package xiaojw.byd.hook;\n\n' +
+                    '/**\n' +
+                    ' * 由构建脚本从 assets/wxcode_versions.json 生成，请勿手改。\n' +
+                    ' * 改版本表请改那个 JSON，然后重新构建。\n' +
+                    ' */\n' +
+                    'final class WxVersionTableDefault {\n' +
+                    '    static final String JSON = "' + esc + '";\n' +
+                    '    private WxVersionTableDefault() {}\n' +
+                    '}\n', 'UTF-8')
+            logger.lifecycle("版本表默认值已生成（${json.length()} 字符）→ ${outFile}")
+        }
+    }
+    // 显式声明生产者关系：资源合并前必须先拷好 index.html
+    tasks.matching { it.name.startsWith('merge') && it.name.endsWith('Assets') }.configureEach {
+        dependsOn 'syncWebui'
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { outputFileName = "byd-lsp-${variant.versionName}-${variant.name}.apk" }
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+// Xposed API 存根：compileOnly，不会打进 APK
+tasks.register('fetchXposedApi') {
+    def jar = file('libs/api-82.jar')
+    outputs.file(jar)
+    doLast {
+        if (!jar.exists()) {
+            jar.parentFile.mkdirs()
+            logger.lifecycle("下载 Xposed API 82 存根 → ${jar}")
+            new URL('https://api.xposed.info/de/robv/android/xposed/api/82/api-82.jar')
+                    .withInputStream { i -> jar.withOutputStream { o -> o << i } }
+        }
+    }
+}
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    dependsOn 'fetchXposedApi'
+    dependsOn 'generateVersionTableDefault'
+}
+
+dependencies {
+    compileOnly files('libs/api-82.jar')
+}

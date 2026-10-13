@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 自适应图标前景：海洋青闪电，落在 108dp 画布中央 72dp 安全区内 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="18"
+        android:translateY="18"
+        android:scaleX="3"
+        android:scaleY="3">
+        <path
+            android:fillColor="#00D9C0"
+            android:pathData="M13.2,3 L6.5,13.2 h4.3 L9.4,21 L16.8,10.4 h-4.4 Z" />
+    </group>
+</vector>

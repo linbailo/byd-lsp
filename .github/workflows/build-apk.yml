@@ -1,0 +1,104 @@
+name: build-apk
+
+# 推送到 main/master 或手动触发时构建 APK。
+# 不需要本地装 Android SDK —— 直接把产物下载下来安装即可。
+#
+# 注意：构建的是 **release** 而不是 debug。
+# Xposed 模块必须单 dex，而 AGP 在 debug 变体下会把工程类按包拆成多个 dex，
+# 模块加载器通常只读 classes.dex，结果就是入口类找不到、勾选了也不注入。
+# 下面的「校验产物」步骤会强制检查这一点。
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 准备 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 准备 Node 20（跑仓库自带的自检）
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 跑自检（纯 Node，不依赖 Android 环境）
+        run: |
+          set -e
+          for t in verify-crypto verify-app check-html check-version-table check-java check-refs check-docs; do
+            echo "== $t =="
+            node "tests/$t.mjs" .
+          done
+
+      - name: 准备 Android SDK
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          SM="$(command -v sdkmanager || true)"
+          [ -n "$SM" ] || SM="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          if [ -x "$SM" ]; then
+            yes | "$SM" --sdk_root="$SDK" --licenses >/dev/null 2>&1 || true
+            yes | "$SM" --sdk_root="$SDK" "platforms;android-34" "build-tools;34.0.0" "platform-tools" >/dev/null 2>&1 || true
+          fi
+          ls "$SDK/platforms" || true
+
+      - name: 校验输入文件
+        run: |
+          test -f index.html || { echo "缺少 index.html（控制台页面）"; exit 1; }
+          test -f byd-lsp/keystore.properties || { echo "缺少 keystore.properties"; exit 1; }
+          test -f byd-lsp/byd-lsp-release.jks || { echo "缺少签名密钥"; exit 1; }
+          test -f byd-lsp/app/src/main/assets/wxcode_versions.json || { echo "缺少版本表"; exit 1; }
+          echo "index.html 大小: $(wc -c < index.html) 字节"
+
+      - name: 下载 Xposed API 存根
+        run: |
+          mkdir -p byd-lsp/app/libs
+          curl -fsSL -o byd-lsp/app/libs/api-82.jar \
+            https://api.xposed.info/de/robv/android/xposed/api/82/api-82.jar
+          ls -l byd-lsp/app/libs/api-82.jar
+
+      - name: 配置 Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+          build-root-directory: byd-lsp
+
+      - name: 构建 release APK
+        working-directory: byd-lsp
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: 校验产物（单 dex + 资源齐全）
+        run: |
+          set -e
+          APK="$(find byd-lsp/app/build/outputs/apk -name '*.apk' | head -n1)"
+          echo "APK: $APK"
+          unzip -l "$APK" | grep -E 'classes[0-9]*\.dex'
+          DEX="$(unzip -l "$APK" | grep -cE 'classes[0-9]*\.dex')"
+          echo "dex 文件数: $DEX"
+          test "$DEX" -eq 1 || { echo "::error::Xposed 模块必须单 dex，当前 $DEX 个"; exit 1; }
+          for f in assets/webui/index.html assets/xposed_init assets/wxcode_versions.json; do
+            unzip -l "$APK" | grep -q "$f" || { echo "::error::缺少 $f"; exit 1; }
+          done
+
+      - name: 校验签名
+        run: |
+          set -e
+          APK="$(find byd-lsp/app/build/outputs/apk -name '*.apk' | head -n1)"
+          BT="$(ls -d "${ANDROID_HOME}"/build-tools/*/ | sort -V | tail -n1)"
+          "${BT}apksigner" verify --print-certs "$APK"
+
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-lsp-apk
+          path: byd-lsp/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error

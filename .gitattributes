@@ -1,0 +1,26 @@
+# 换行符与二进制文件的处理规则。
+#
+# 背景：这个仓库里有两类对换行符敏感的文件 ——
+#   · `build-apk.sh` 要在 Linux/macOS 上跑，必须是 LF；
+#   · `build-apk.ps1` 在 Windows PowerShell 5.1 下解析，并且带着 UTF-8 BOM，
+#     任何转换都可能让它解析失败，所以标记为不转换；
+#   · `assets/xposed_init` 必须**恰好 23 字节且末尾无换行**（多一个换行会让模块加载失败），
+#     绝不能让它参与任何文本处理。
+
+* text=auto
+
+*.sh    text eol=lf
+*.ps1   -text
+*.bat   -text
+*.cmd   -text
+
+# 入口声明文件，字节数敏感
+byd-lsp/app/src/main/assets/xposed_init  -text
+
+# 二进制
+*.jar   binary
+*.jks   binary
+*.apk   binary
+*.png   binary
+*.jpg   binary
+*.webp  binary

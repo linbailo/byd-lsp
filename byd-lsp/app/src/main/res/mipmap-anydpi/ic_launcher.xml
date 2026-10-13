@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 兜底变体：某些 aapt2 版本要求存在不带版本限定符的同名资源 -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/brand_bg" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
