@@ -1,5 +1,8 @@
 # BYD 自动签到 · LSPosed 模块
 
+[![build-apk](https://github.com/linbailo/byd-lsp/actions/workflows/build-apk.yml/badge.svg)](https://github.com/linbailo/byd-lsp/actions/workflows/build-apk.yml)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 一个 **LSPosed 模块 + 自带控制台 App**：在微信进程内拿到小程序的登录 `code`，
 直接调用比亚迪小程序接口完成每日签到。**不需要 root**，不需要 crond / curl / openssl，
 也不占用任何本地端口。
